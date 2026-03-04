@@ -10,6 +10,7 @@ export const chatKeys = {
   list: () => [...chatKeys.all, "list"] as const,
   detail: (id: string) => [...chatKeys.all, "detail", id] as const,
   messages: (chatId: string) => [...chatKeys.all, "messages", chatId] as const,
+  group: (groupId: string) => [...chatKeys.all, "group", groupId] as const,
 };
 
 export function useChats() {
@@ -35,10 +36,18 @@ export function useChatMessages(chatId: string | null) {
   });
 }
 
+export function useChatGroup(groupId: string | null) {
+  return useQuery({
+    queryKey: chatKeys.group(groupId ?? ""),
+    queryFn: () => api.get<Chat[]>(`/chats/group/${groupId}`),
+    enabled: !!groupId,
+  });
+}
+
 export function useCreateChat() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (data: { name: string; mode: string; characterIds?: string[] }) =>
+    mutationFn: (data: { name: string; mode: string; characterIds?: string[]; groupId?: string | null }) =>
       api.post<Chat>("/chats", data),
     onSuccess: () => qc.invalidateQueries({ queryKey: chatKeys.list() }),
   });
@@ -64,6 +73,17 @@ export function useUpdateChat() {
   });
 }
 
+export function useUpdateChatMetadata() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...metadata }: { id: string; [key: string]: unknown }) =>
+      api.patch<Chat>(`/chats/${id}/metadata`, metadata),
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: chatKeys.detail(vars.id) });
+    },
+  });
+}
+
 export function useDeleteMessage(chatId: string | null) {
   const qc = useQueryClient();
   return useMutation({
@@ -74,5 +94,44 @@ export function useDeleteMessage(chatId: string | null) {
         qc.invalidateQueries({ queryKey: chatKeys.messages(chatId) });
       }
     },
+  });
+}
+
+/** Export a chat as JSONL */
+export function useExportChat() {
+  return useMutation({
+    mutationFn: async (chatId: string) => {
+      const res = await fetch(`/api/chats/${chatId}/export`);
+      const blob = await res.blob();
+      const disposition = res.headers.get("Content-Disposition") ?? "";
+      const match = disposition.match(/filename="(.+?)"/);
+      const filename = match?.[1] ? decodeURIComponent(match[1]) : `chat-${chatId}.jsonl`;
+      // Download via blob
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    },
+  });
+}
+
+/** Create a branch (copy) of an existing chat */
+export function useBranchChat() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ chatId, upToMessageId }: { chatId: string; upToMessageId?: string }) =>
+      api.post<Chat>(`/chats/${chatId}/branch`, { upToMessageId }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: chatKeys.list() }),
+  });
+}
+
+/** Clear all user data */
+export function useClearAllData() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.post<{ success: boolean }>("/admin/clear-all", { confirm: true }),
+    onSuccess: () => qc.invalidateQueries(),
   });
 }

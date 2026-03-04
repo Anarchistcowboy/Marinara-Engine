@@ -34,6 +34,16 @@ export interface CharacterExtensions {
   fav: boolean;
   world: string;
   depth_prompt: DepthPrompt;
+  /** Marinara Engine extension: character backstory / lore */
+  backstory: string;
+  /** Marinara Engine extension: physical appearance description */
+  appearance: string;
+  /** Marinara Engine: Name display color/gradient (CSS value, e.g. "linear-gradient(90deg, #ff6b6b, #ffd93d)" or "#ff6b6b") */
+  nameColor?: string;
+  /** Marinara Engine: Dialogue highlight color — text in quotation marks is bold + colored with this */
+  dialogueColor?: string;
+  /** Marinara Engine: Chat bubble / dialogue box background color */
+  boxColor?: string;
   [key: string]: unknown;
 }
 
@@ -82,6 +92,18 @@ export interface Character {
   avatarPath: string | null;
   /** Path to sprite folder */
   spriteFolderPath: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** A group of characters (e.g. "Fatui Harbingers") — acts as a preset that adds all members to a chat. */
+export interface CharacterGroup {
+  id: string;
+  name: string;
+  description: string;
+  avatarPath: string | null;
+  /** IDs of characters belonging to this group */
+  characterIds: string[];
   createdAt: string;
   updatedAt: string;
 }

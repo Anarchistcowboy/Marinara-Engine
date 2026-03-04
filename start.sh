@@ -1,0 +1,82 @@
+#!/usr/bin/env bash
+# ──────────────────────────────────────────────
+# RPG Engine — Start Script (macOS / Linux)
+# ──────────────────────────────────────────────
+set -e
+
+echo ""
+echo "  ╔══════════════════════════════════════════╗"
+echo "  ║          RPG Engine  —  Launcher         ║"
+echo "  ╚══════════════════════════════════════════╝"
+echo ""
+
+# Navigate to script directory
+cd "$(dirname "$0")"
+
+# ── Check Node.js ──
+if ! command -v node &> /dev/null; then
+    echo "  [ERROR] Node.js is not installed."
+    echo "  Please install Node.js 20+ from https://nodejs.org"
+    echo "  Or via homebrew:  brew install node"
+    exit 1
+fi
+
+NODE_VERSION=$(node -v | cut -d'.' -f1 | tr -d 'v')
+echo "  [OK] Node.js $(node -v) found"
+
+if [ "$NODE_VERSION" -lt 20 ]; then
+    echo "  [WARN] Node.js 20+ is recommended. You have v${NODE_VERSION}."
+fi
+
+# ── Check pnpm ──
+if ! command -v pnpm &> /dev/null; then
+    echo "  [..] pnpm not found, installing via corepack..."
+    corepack enable 2>/dev/null || npm install -g pnpm
+fi
+echo "  [OK] pnpm found"
+
+# ── Install dependencies ──
+if [ ! -d "node_modules" ]; then
+    echo ""
+    echo "  [..] Installing dependencies (first run)..."
+    echo "       This may take a few minutes."
+    echo ""
+    pnpm install
+fi
+
+# ── Build if needed ──
+if [ ! -d "packages/shared/dist" ]; then
+    echo "  [..] Building shared types..."
+    pnpm build:shared
+fi
+if [ ! -d "packages/server/dist" ]; then
+    echo "  [..] Building server..."
+    pnpm build:server
+fi
+if [ ! -d "packages/client/dist" ]; then
+    echo "  [..] Building client..."
+    pnpm build:client
+fi
+
+# ── Database schema ──
+echo "  [..] Syncing database schema..."
+pnpm db:push 2>/dev/null || true
+
+# ── Start ──
+echo ""
+echo "  ══════════════════════════════════════════"
+echo "    Starting RPG Engine on http://localhost:7860"
+echo "    Press Ctrl+C to stop"
+echo "  ══════════════════════════════════════════"
+echo ""
+
+export NODE_ENV=production
+export PORT=7860
+export HOST=0.0.0.0
+
+# Open browser after a short delay
+(sleep 3 && open "http://localhost:7860" 2>/dev/null || xdg-open "http://localhost:7860" 2>/dev/null) &
+
+# Start server
+cd packages/server
+exec node dist/index.js

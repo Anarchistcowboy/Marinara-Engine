@@ -29,7 +29,7 @@ export async function backgroundsRoutes(app: FastifyInstance) {
     });
     return files.map((filename) => ({
       filename,
-      url: `/api/backgrounds/file/${filename}`,
+      url: `/api/backgrounds/file/${encodeURIComponent(filename)}`,
     }));
   });
 

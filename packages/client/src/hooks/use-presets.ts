@@ -1,0 +1,321 @@
+// ──────────────────────────────────────────────
+// React Query: Preset, Group, Section & Choice hooks
+// ──────────────────────────────────────────────
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { api } from "../lib/api-client";
+import type {
+  PromptPreset,
+  PromptGroup,
+  PromptSection,
+  ChoiceBlock,
+  GenerationParameters,
+  ChatMLMessage,
+} from "@rpg-engine/shared";
+
+// ── Query Keys ──
+
+export const presetKeys = {
+  all: ["presets"] as const,
+  list: () => [...presetKeys.all, "list"] as const,
+  detail: (id: string) => [...presetKeys.all, "detail", id] as const,
+  full: (id: string) => [...presetKeys.all, "full", id] as const,
+  sections: (presetId: string) => [...presetKeys.all, "sections", presetId] as const,
+  groups: (presetId: string) => [...presetKeys.all, "groups", presetId] as const,
+  choiceBlocks: (presetId: string) => [...presetKeys.all, "choices", presetId] as const,
+  sectionChoice: (sectionId: string) => [...presetKeys.all, "section-choice", sectionId] as const,
+  preview: (presetId: string) => [...presetKeys.all, "preview", presetId] as const,
+  default: () => [...presetKeys.all, "default"] as const,
+};
+
+// ═══════════════════════════════════════════════
+//  Presets
+// ═══════════════════════════════════════════════
+
+export function usePresets() {
+  return useQuery({
+    queryKey: presetKeys.list(),
+    queryFn: () => api.get<PromptPreset[]>("/prompts"),
+  });
+}
+
+export function usePreset(id: string | null) {
+  return useQuery({
+    queryKey: presetKeys.detail(id ?? ""),
+    queryFn: () => api.get<PromptPreset>(`/prompts/${id}`),
+    enabled: !!id,
+  });
+}
+
+/** Fetch preset + all sections, groups, choice blocks in one call. */
+export function usePresetFull(id: string | null) {
+  return useQuery({
+    queryKey: presetKeys.full(id ?? ""),
+    queryFn: () =>
+      api.get<{
+        preset: PromptPreset;
+        sections: PromptSection[];
+        groups: PromptGroup[];
+        choiceBlocks: ChoiceBlock[];
+      }>(`/prompts/${id}/full`),
+    enabled: !!id,
+  });
+}
+
+export function useDefaultPreset() {
+  return useQuery({
+    queryKey: presetKeys.default(),
+    queryFn: () => api.get<PromptPreset | null>("/prompts/default"),
+  });
+}
+
+export function useCreatePreset() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: Record<string, unknown>) => api.post<PromptPreset>("/prompts", data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: presetKeys.list() });
+    },
+  });
+}
+
+export function useUpdatePreset() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...data }: { id: string } & Record<string, unknown>) =>
+      api.patch<PromptPreset>(`/prompts/${id}`, data),
+    onSuccess: (_data, variables) => {
+      qc.invalidateQueries({ queryKey: presetKeys.list() });
+      qc.invalidateQueries({ queryKey: presetKeys.detail(variables.id) });
+      qc.invalidateQueries({ queryKey: presetKeys.full(variables.id) });
+    },
+  });
+}
+
+export function useDeletePreset() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.delete(`/prompts/${id}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: presetKeys.all });
+    },
+  });
+}
+
+export function useDuplicatePreset() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.post<PromptPreset>(`/prompts/${id}/duplicate`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: presetKeys.list() });
+    },
+  });
+}
+
+// ═══════════════════════════════════════════════
+//  Groups
+// ═══════════════════════════════════════════════
+
+export function usePresetGroups(presetId: string | null) {
+  return useQuery({
+    queryKey: presetKeys.groups(presetId ?? ""),
+    queryFn: () => api.get<PromptGroup[]>(`/prompts/${presetId}/groups`),
+    enabled: !!presetId,
+  });
+}
+
+export function useCreateGroup() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ presetId, ...data }: { presetId: string } & Record<string, unknown>) =>
+      api.post<PromptGroup>(`/prompts/${presetId}/groups`, data),
+    onSuccess: (_data, variables) => {
+      qc.invalidateQueries({ queryKey: presetKeys.groups(variables.presetId) });
+      qc.invalidateQueries({ queryKey: presetKeys.full(variables.presetId) });
+    },
+  });
+}
+
+export function useUpdateGroup() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ presetId, groupId, ...data }: { presetId: string; groupId: string } & Record<string, unknown>) =>
+      api.patch<PromptGroup>(`/prompts/${presetId}/groups/${groupId}`, data),
+    onSuccess: (_data, variables) => {
+      qc.invalidateQueries({ queryKey: presetKeys.groups(variables.presetId) });
+      qc.invalidateQueries({ queryKey: presetKeys.full(variables.presetId) });
+    },
+  });
+}
+
+export function useDeleteGroup() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ presetId, groupId }: { presetId: string; groupId: string }) =>
+      api.delete(`/prompts/${presetId}/groups/${groupId}`),
+    onSuccess: (_data, variables) => {
+      qc.invalidateQueries({ queryKey: presetKeys.groups(variables.presetId) });
+      qc.invalidateQueries({ queryKey: presetKeys.sections(variables.presetId) });
+      qc.invalidateQueries({ queryKey: presetKeys.full(variables.presetId) });
+    },
+  });
+}
+
+export function useReorderGroups() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ presetId, groupIds }: { presetId: string; groupIds: string[] }) =>
+      api.put(`/prompts/${presetId}/groups/reorder`, { groupIds }),
+    onSuccess: (_data, variables) => {
+      qc.invalidateQueries({ queryKey: presetKeys.groups(variables.presetId) });
+      qc.invalidateQueries({ queryKey: presetKeys.full(variables.presetId) });
+    },
+  });
+}
+
+// ═══════════════════════════════════════════════
+//  Sections
+// ═══════════════════════════════════════════════
+
+export function usePresetSections(presetId: string | null) {
+  return useQuery({
+    queryKey: presetKeys.sections(presetId ?? ""),
+    queryFn: () => api.get<PromptSection[]>(`/prompts/${presetId}/sections`),
+    enabled: !!presetId,
+  });
+}
+
+export function useCreateSection() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ presetId, ...data }: { presetId: string } & Record<string, unknown>) =>
+      api.post<PromptSection>(`/prompts/${presetId}/sections`, data),
+    onSuccess: (_data, variables) => {
+      qc.invalidateQueries({ queryKey: presetKeys.sections(variables.presetId) });
+      qc.invalidateQueries({ queryKey: presetKeys.full(variables.presetId) });
+    },
+  });
+}
+
+export function useUpdateSection() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      presetId,
+      sectionId,
+      ...data
+    }: { presetId: string; sectionId: string } & Record<string, unknown>) =>
+      api.patch<PromptSection>(`/prompts/${presetId}/sections/${sectionId}`, data),
+    onSuccess: (_data, variables) => {
+      qc.invalidateQueries({ queryKey: presetKeys.sections(variables.presetId) });
+      qc.invalidateQueries({ queryKey: presetKeys.full(variables.presetId) });
+    },
+  });
+}
+
+export function useDeleteSection() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ presetId, sectionId }: { presetId: string; sectionId: string }) =>
+      api.delete(`/prompts/${presetId}/sections/${sectionId}`),
+    onSuccess: (_data, variables) => {
+      qc.invalidateQueries({ queryKey: presetKeys.sections(variables.presetId) });
+      qc.invalidateQueries({ queryKey: presetKeys.full(variables.presetId) });
+    },
+  });
+}
+
+export function useReorderSections() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ presetId, sectionIds }: { presetId: string; sectionIds: string[] }) =>
+      api.put(`/prompts/${presetId}/sections/reorder`, { sectionIds }),
+    onSuccess: (_data, variables) => {
+      qc.invalidateQueries({ queryKey: presetKeys.sections(variables.presetId) });
+      qc.invalidateQueries({ queryKey: presetKeys.full(variables.presetId) });
+    },
+  });
+}
+
+// ═══════════════════════════════════════════════
+//  Choice Blocks
+// ═══════════════════════════════════════════════
+
+export function useSectionChoice(presetId: string | null, sectionId: string | null) {
+  return useQuery({
+    queryKey: presetKeys.sectionChoice(sectionId ?? ""),
+    queryFn: () => api.get<ChoiceBlock | null>(`/prompts/${presetId}/sections/${sectionId}/choice`),
+    enabled: !!presetId && !!sectionId,
+  });
+}
+
+export function useCreateChoice() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      presetId,
+      sectionId,
+      ...data
+    }: { presetId: string; sectionId: string } & Record<string, unknown>) =>
+      api.post<ChoiceBlock>(`/prompts/${presetId}/sections/${sectionId}/choice`, data),
+    onSuccess: (_data, variables) => {
+      qc.invalidateQueries({ queryKey: presetKeys.sectionChoice(variables.sectionId) });
+      qc.invalidateQueries({ queryKey: presetKeys.full(variables.presetId) });
+    },
+  });
+}
+
+export function useUpdateChoice() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      presetId,
+      sectionId,
+      choiceId,
+      ...data
+    }: { presetId: string; sectionId: string; choiceId: string } & Record<string, unknown>) =>
+      api.patch<ChoiceBlock>(`/prompts/${presetId}/sections/${sectionId}/choice/${choiceId}`, data),
+    onSuccess: (_data, variables) => {
+      qc.invalidateQueries({ queryKey: presetKeys.sectionChoice(variables.sectionId) });
+      qc.invalidateQueries({ queryKey: presetKeys.full(variables.presetId) });
+    },
+  });
+}
+
+export function useDeleteChoice() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      presetId,
+      sectionId,
+      choiceId,
+    }: { presetId: string; sectionId: string; choiceId: string }) =>
+      api.delete(`/prompts/${presetId}/sections/${sectionId}/choice/${choiceId}`),
+    onSuccess: (_data, variables) => {
+      qc.invalidateQueries({ queryKey: presetKeys.sectionChoice(variables.sectionId) });
+      qc.invalidateQueries({ queryKey: presetKeys.full(variables.presetId) });
+    },
+  });
+}
+
+// ═══════════════════════════════════════════════
+//  Preview
+// ═══════════════════════════════════════════════
+
+export function usePreviewPreset() {
+  return useMutation({
+    mutationFn: ({
+      presetId,
+      chatId,
+      choices,
+    }: {
+      presetId: string;
+      chatId: string;
+      choices?: Record<string, string>;
+    }) =>
+      api.post<{
+        messages: ChatMLMessage[];
+        parameters: GenerationParameters;
+        messageCount: number;
+      }>(`/prompts/${presetId}/preview`, { chatId, choices }),
+  });
+}

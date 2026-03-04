@@ -7,6 +7,30 @@ export const promptRoleSchema = z.enum(["system", "user", "assistant"]);
 
 export const injectionPositionSchema = z.enum(["ordered", "depth"]);
 
+export const wrapFormatSchema = z.enum(["xml", "markdown"]);
+
+export const markerTypeSchema = z.enum([
+  "character",
+  "lorebook",
+  "persona",
+  "chat_history",
+  "world_info_before",
+  "world_info_after",
+  "dialogue_examples",
+]);
+
+export const markerConfigSchema = z.object({
+  type: markerTypeSchema,
+  characterFields: z.array(z.string()).optional(),
+  lorebookFormat: z.enum(["full", "worldbook_only", "character_only"]).optional(),
+  chatHistoryOptions: z
+    .object({
+      maxMessages: z.number().int().min(1).optional(),
+      includeSystemMessages: z.boolean().optional(),
+    })
+    .optional(),
+});
+
 export const generationParametersSchema = z.object({
   temperature: z.number().min(0).max(2).default(1),
   topP: z.number().min(0).max(1).default(1),
@@ -33,13 +57,68 @@ export const promptVariableGroupSchema = z.object({
   options: z.array(promptVariableOptionSchema),
 });
 
+// ── Choice blocks ──
+
+export const choiceOptionSchema = z.object({
+  id: z.string(),
+  label: z.string(),
+  content: z.string(),
+});
+
+export const createChoiceBlockSchema = z.object({
+  sectionId: z.string(),
+  label: z.string().min(1).max(200),
+  options: z.array(choiceOptionSchema).min(2),
+});
+
+export const updateChoiceBlockSchema = z.object({
+  label: z.string().min(1).max(200).optional(),
+  options: z.array(choiceOptionSchema).min(2).optional(),
+});
+
+// ── Groups ──
+
+export const createPromptGroupSchema = z.object({
+  presetId: z.string(),
+  name: z.string().min(1).max(200),
+  parentGroupId: z.string().nullable().default(null),
+  order: z.number().int().default(100),
+  enabled: z.boolean().default(true),
+});
+
+export const updatePromptGroupSchema = z.object({
+  name: z.string().min(1).max(200).optional(),
+  parentGroupId: z.string().nullable().optional(),
+  order: z.number().int().optional(),
+  enabled: z.boolean().optional(),
+});
+
+// ── Presets ──
+
 export const createPromptPresetSchema = z.object({
   name: z.string().min(1).max(200),
   description: z.string().default(""),
   variableGroups: z.array(promptVariableGroupSchema).default([]),
   variableValues: z.record(z.string()).default({}),
   parameters: generationParametersSchema.default({}),
+  wrapFormat: wrapFormatSchema.default("xml"),
+  isDefault: z.boolean().default(false),
+  author: z.string().default(""),
 });
+
+export const updatePromptPresetSchema = z.object({
+  name: z.string().min(1).max(200).optional(),
+  description: z.string().optional(),
+  sectionOrder: z.array(z.string()).optional(),
+  groupOrder: z.array(z.string()).optional(),
+  variableGroups: z.array(promptVariableGroupSchema).optional(),
+  variableValues: z.record(z.string()).optional(),
+  parameters: generationParametersSchema.partial().optional(),
+  wrapFormat: wrapFormatSchema.optional(),
+  author: z.string().optional(),
+});
+
+// ── Sections ──
 
 export const createPromptSectionSchema = z.object({
   presetId: z.string(),
@@ -49,14 +128,35 @@ export const createPromptSectionSchema = z.object({
   role: promptRoleSchema.default("system"),
   enabled: z.boolean().default(true),
   isMarker: z.boolean().default(false),
+  groupId: z.string().nullable().default(null),
+  markerConfig: markerConfigSchema.nullable().default(null),
   injectionPosition: injectionPositionSchema.default("ordered"),
   injectionDepth: z.number().int().min(0).default(0),
   injectionOrder: z.number().int().default(100),
-  wrapInXml: z.boolean().default(false),
-  xmlTagName: z.string().default(""),
   forbidOverrides: z.boolean().default(false),
 });
 
-export type CreatePromptPresetInput = z.infer<typeof createPromptPresetSchema>;
-export type CreatePromptSectionInput = z.infer<typeof createPromptSectionSchema>;
+export const updatePromptSectionSchema = z.object({
+  name: z.string().min(1).max(200).optional(),
+  content: z.string().optional(),
+  role: promptRoleSchema.optional(),
+  enabled: z.boolean().optional(),
+  groupId: z.string().nullable().optional(),
+  markerConfig: markerConfigSchema.nullable().optional(),
+  injectionPosition: injectionPositionSchema.optional(),
+  injectionDepth: z.number().int().min(0).optional(),
+  injectionOrder: z.number().int().optional(),
+  forbidOverrides: z.boolean().optional(),
+});
+
+// ── Exported input types ──
+
+export type CreatePromptPresetInput = z.input<typeof createPromptPresetSchema>;
+export type UpdatePromptPresetInput = z.infer<typeof updatePromptPresetSchema>;
+export type CreatePromptSectionInput = z.input<typeof createPromptSectionSchema>;
+export type UpdatePromptSectionInput = z.infer<typeof updatePromptSectionSchema>;
+export type CreatePromptGroupInput = z.input<typeof createPromptGroupSchema>;
+export type UpdatePromptGroupInput = z.infer<typeof updatePromptGroupSchema>;
+export type CreateChoiceBlockInput = z.infer<typeof createChoiceBlockSchema>;
+export type UpdateChoiceBlockInput = z.infer<typeof updateChoiceBlockSchema>;
 export type GenerationParametersInput = z.infer<typeof generationParametersSchema>;

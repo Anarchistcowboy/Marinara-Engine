@@ -14,6 +14,8 @@ export const characterExtensionsSchema = z.object({
   fav: z.boolean().default(false),
   world: z.string().default(""),
   depth_prompt: depthPromptSchema.default({}),
+  backstory: z.string().default(""),
+  appearance: z.string().default(""),
 }).passthrough();
 
 export const characterBookEntrySchema = z.object({
@@ -71,5 +73,15 @@ export const createCharacterSchema = z.object({
   data: characterDataSchema,
 });
 
+export const createGroupSchema = z.object({
+  name: z.string().min(1),
+  description: z.string().default(""),
+  characterIds: z.array(z.string()).default([]),
+});
+
+export const updateGroupSchema = createGroupSchema.partial();
+
 export type CreateCharacterInput = z.infer<typeof createCharacterSchema>;
 export type CharacterCardV2Input = z.infer<typeof characterCardV2Schema>;
+export type CreateGroupInput = z.infer<typeof createGroupSchema>;
+export type UpdateGroupInput = z.infer<typeof updateGroupSchema>;

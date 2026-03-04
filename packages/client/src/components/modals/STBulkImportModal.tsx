@@ -1,0 +1,461 @@
+// ──────────────────────────────────────────────
+// Modal: SillyTavern Bulk Import
+// ──────────────────────────────────────────────
+import { useState, useCallback } from "react";
+import { Modal } from "../ui/Modal";
+import {
+  FolderSearch,
+  FolderOpen,
+  Loader2,
+  CheckCircle,
+  XCircle,
+  Users,
+  MessageSquare,
+  FileText,
+  BookOpen,
+  Image,
+  AlertTriangle,
+  Import,
+  UserCircle,
+} from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { cn } from "../../lib/utils";
+
+interface Props {
+  open: boolean;
+  onClose: () => void;
+}
+
+interface ScanResult {
+  success: boolean;
+  error?: string;
+  dataDir?: string;
+  characters: { path: string; name: string; format: string }[];
+  chats: { path: string; characterName: string }[];
+  groupChats: { path: string; groupName: string; members: string[] }[];
+  presets: { path: string; name: string }[];
+  lorebooks: { path: string; name: string }[];
+  backgrounds: { path: string; name: string }[];
+  personas: { path: string; name: string }[];
+}
+
+interface ImportResult {
+  success: boolean;
+  error?: string;
+  imported: {
+    characters: number;
+    chats: number;
+    groupChats: number;
+    presets: number;
+    lorebooks: number;
+    backgrounds: number;
+    personas: number;
+  };
+  errors: string[];
+}
+
+type Phase = "input" | "scanning" | "preview" | "importing" | "done";
+
+export function STBulkImportModal({ open, onClose }: Props) {
+  const [folderPath, setFolderPath] = useState("");
+  const [phase, setPhase] = useState<Phase>("input");
+  const [scanResult, setScanResult] = useState<ScanResult | null>(null);
+  const [importResult, setImportResult] = useState<ImportResult | null>(null);
+  const [error, setError] = useState("");
+  const [options, setOptions] = useState({
+    characters: true,
+    chats: true,
+    groupChats: true,
+    presets: true,
+    lorebooks: true,
+    backgrounds: true,
+    personas: true,
+  });
+  const qc = useQueryClient();
+
+  const reset = useCallback(() => {
+    setPhase("input");
+    setScanResult(null);
+    setImportResult(null);
+    setError("");
+  }, []);
+
+  const handleClose = useCallback(() => {
+    reset();
+    onClose();
+  }, [reset, onClose]);
+
+  const handleScan = useCallback(async () => {
+    if (!folderPath.trim()) return;
+    setPhase("scanning");
+    setError("");
+
+    try {
+      const res = await fetch("/api/import/st-bulk/scan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ folderPath: folderPath.trim() }),
+      });
+      const data = (await res.json()) as ScanResult;
+      if (data.success) {
+        setScanResult(data);
+        setPhase("preview");
+      } else {
+        setError(data.error ?? "Scan failed");
+        setPhase("input");
+      }
+    } catch {
+      setError("Failed to connect to server");
+      setPhase("input");
+    }
+  }, [folderPath]);
+
+  const [picking, setPicking] = useState(false);
+
+  const handleBrowse = useCallback(async () => {
+    setPicking(true);
+    setError("");
+    try {
+      const res = await fetch("/api/import/pick-folder", { method: "POST" });
+      const data = (await res.json()) as { success: boolean; path?: string; error?: string };
+      if (data.success && data.path) {
+        setFolderPath(data.path);
+      }
+    } catch {
+      // silent — user can still type manually
+    }
+    setPicking(false);
+  }, []);
+
+  const handleImport = useCallback(async () => {
+    if (!folderPath.trim()) return;
+    setPhase("importing");
+
+    try {
+      const res = await fetch("/api/import/st-bulk/run", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ folderPath: folderPath.trim(), options }),
+      });
+      const data = (await res.json()) as ImportResult;
+      setImportResult(data);
+      setPhase("done");
+
+      // Invalidate all relevant queries so the UI refreshes
+      qc.invalidateQueries();
+    } catch {
+      setError("Import failed — server error");
+      setPhase("preview");
+    }
+  }, [folderPath, options, qc]);
+
+  return (
+    <Modal open={open} onClose={handleClose} title="Import from SillyTavern" width="max-w-lg">
+      <div className="flex flex-col gap-4">
+        {/* ── Phase: Input ── */}
+        {(phase === "input" || phase === "scanning") && (
+          <>
+            <p className="text-xs text-[var(--muted-foreground)]">
+              Select or enter the path to your SillyTavern installation folder. We'll scan for characters,
+              chats, presets, lorebooks, and backgrounds to import.
+            </p>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-medium">SillyTavern Folder Path</label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={folderPath}
+                  onChange={(e) => setFolderPath(e.target.value)}
+                  placeholder="/path/to/SillyTavern"
+                  disabled={phase === "scanning"}
+                  className="flex-1 rounded-lg bg-[var(--secondary)] px-3 py-2 text-xs outline-none ring-1 ring-transparent placeholder:text-[var(--muted-foreground)]/50 focus:ring-[var(--primary)]"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleScan();
+                  }}
+                />
+                <button
+                  onClick={handleBrowse}
+                  disabled={phase === "scanning" || picking}
+                  className="flex items-center gap-1 rounded-lg border border-[var(--border)] px-3 py-2 text-xs font-medium transition-all hover:bg-[var(--secondary)] active:scale-95 disabled:opacity-50"
+                  title="Browse for folder"
+                >
+                  {picking ? <Loader2 size={14} className="animate-spin" /> : <FolderOpen size={14} />}
+                  Browse
+                </button>
+              </div>
+            </div>
+
+            <button
+              onClick={handleScan}
+              disabled={!folderPath.trim() || phase === "scanning"}
+              className={cn(
+                "flex items-center justify-center gap-1.5 rounded-lg px-4 py-2.5 text-xs font-medium transition-all",
+                folderPath.trim() && phase !== "scanning"
+                  ? "bg-[var(--primary)] text-[var(--primary-foreground)] hover:opacity-90 active:scale-95"
+                  : "bg-[var(--secondary)] text-[var(--muted-foreground)] opacity-50 cursor-not-allowed",
+              )}
+            >
+              {phase === "scanning" ? (
+                <Loader2 size={14} className="animate-spin" />
+              ) : (
+                <FolderSearch size={14} />
+              )}
+              {phase === "scanning" ? "Scanning…" : "Scan Folder"}
+            </button>
+
+            {error && (
+              <div className="flex items-start gap-2 rounded-lg bg-[var(--destructive)]/10 p-3 text-xs text-[var(--destructive)]">
+                <XCircle size={14} className="mt-0.5 flex-shrink-0" />
+                <span>{error}</span>
+              </div>
+            )}
+
+            <div className="rounded-lg bg-[var(--secondary)]/50 p-2.5 text-[10px] text-[var(--muted-foreground)] ring-1 ring-[var(--border)]">
+              <strong>Tip:</strong> This is the main SillyTavern folder (the one containing{" "}
+              <code className="rounded bg-[var(--secondary)] px-1">data/</code> or{" "}
+              <code className="rounded bg-[var(--secondary)] px-1">public/</code>).
+              On most setups it's named <code className="rounded bg-[var(--secondary)] px-1">SillyTavern</code>.
+            </div>
+          </>
+        )}
+
+        {/* ── Phase: Preview ── */}
+        {phase === "preview" && scanResult && (
+          <>
+            <div className="flex items-center gap-2 rounded-lg bg-emerald-500/10 p-2.5 text-xs text-emerald-400">
+              <CheckCircle size={14} />
+              <span>
+                Found ST data in <code className="rounded bg-[var(--secondary)] px-1 text-[10px]">{scanResult.dataDir}</code>
+              </span>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <span className="text-xs font-medium">Select what to import:</span>
+
+              <ImportCategory
+                icon={<Users size={14} />}
+                label="Characters"
+                count={scanResult.characters.length}
+                items={scanResult.characters.map((c) => c.name)}
+                checked={options.characters}
+                onChange={(v) => setOptions((o) => ({ ...o, characters: v }))}
+              />
+
+              <ImportCategory
+                icon={<MessageSquare size={14} />}
+                label="Chats"
+                count={scanResult.chats.length}
+                items={scanResult.chats.map((c) => c.characterName)}
+                checked={options.chats}
+                onChange={(v) => setOptions((o) => ({ ...o, chats: v }))}
+              />
+
+              <ImportCategory
+                icon={<Users size={14} />}
+                label="Group Chats"
+                count={scanResult.groupChats?.length ?? 0}
+                items={(scanResult.groupChats ?? []).map((g) => `${g.groupName} (${g.members.join(", ")})`)}
+                checked={options.groupChats}
+                onChange={(v) => setOptions((o) => ({ ...o, groupChats: v }))}
+              />
+
+              <ImportCategory
+                icon={<FileText size={14} />}
+                label="Presets"
+                count={scanResult.presets.length}
+                items={scanResult.presets.map((p) => p.name)}
+                checked={options.presets}
+                onChange={(v) => setOptions((o) => ({ ...o, presets: v }))}
+              />
+
+              <ImportCategory
+                icon={<BookOpen size={14} />}
+                label="Lorebooks"
+                count={scanResult.lorebooks.length}
+                items={scanResult.lorebooks.map((l) => l.name)}
+                checked={options.lorebooks}
+                onChange={(v) => setOptions((o) => ({ ...o, lorebooks: v }))}
+              />
+
+              <ImportCategory
+                icon={<Image size={14} />}
+                label="Backgrounds"
+                count={scanResult.backgrounds.length}
+                items={scanResult.backgrounds.map((b) => b.name)}
+                checked={options.backgrounds}
+                onChange={(v) => setOptions((o) => ({ ...o, backgrounds: v }))}
+              />
+
+              <ImportCategory
+                icon={<UserCircle size={14} />}
+                label="Personas"
+                count={scanResult.personas?.length ?? 0}
+                items={(scanResult.personas ?? []).map((p) => p.name)}
+                checked={options.personas}
+                onChange={(v) => setOptions((o) => ({ ...o, personas: v }))}
+              />
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={reset}
+                className="flex-1 rounded-lg border border-[var(--border)] px-3 py-2 text-xs font-medium transition-all hover:bg-[var(--secondary)] active:scale-95"
+              >
+                Back
+              </button>
+              <button
+                onClick={handleImport}
+                disabled={!options.characters && !options.chats && !options.groupChats && !options.presets && !options.lorebooks && !options.backgrounds && !options.personas}
+                className={cn(
+                  "flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition-all active:scale-95",
+                  "bg-[var(--primary)] text-[var(--primary-foreground)] hover:opacity-90",
+                )}
+              >
+                <Import size={14} />
+                Import Selected
+              </button>
+            </div>
+          </>
+        )}
+
+        {/* ── Phase: Importing ── */}
+        {phase === "importing" && (
+          <div className="flex flex-col items-center gap-3 py-6">
+            <Loader2 size={32} className="animate-spin text-[var(--primary)]" />
+            <p className="text-sm font-medium">Importing your data…</p>
+            <p className="text-xs text-[var(--muted-foreground)]">This may take a moment for large libraries.</p>
+          </div>
+        )}
+
+        {/* ── Phase: Done ── */}
+        {phase === "done" && importResult && (
+          <>
+            <div className={cn(
+              "flex items-center gap-2 rounded-lg p-3 text-xs",
+              importResult.success
+                ? "bg-emerald-500/10 text-emerald-400"
+                : "bg-[var(--destructive)]/10 text-[var(--destructive)]",
+            )}>
+              {importResult.success ? <CheckCircle size={14} /> : <XCircle size={14} />}
+              <span className="font-medium">
+                {importResult.success ? "Import complete!" : importResult.error ?? "Import failed"}
+              </span>
+            </div>
+
+            {importResult.success && (
+              <div className="grid grid-cols-2 gap-2">
+                <StatCard icon={<Users size={14} />} label="Characters" count={importResult.imported.characters} />
+                <StatCard icon={<MessageSquare size={14} />} label="Chats" count={importResult.imported.chats} />
+                <StatCard icon={<Users size={14} />} label="Group Chats" count={importResult.imported.groupChats ?? 0} />
+                <StatCard icon={<FileText size={14} />} label="Presets" count={importResult.imported.presets} />
+                <StatCard icon={<BookOpen size={14} />} label="Lorebooks" count={importResult.imported.lorebooks} />
+                <StatCard icon={<Image size={14} />} label="Backgrounds" count={importResult.imported.backgrounds} />
+                <StatCard icon={<UserCircle size={14} />} label="Personas" count={importResult.imported.personas ?? 0} />
+              </div>
+            )}
+
+            {importResult.errors.length > 0 && (
+              <div className="flex flex-col gap-1.5 rounded-lg bg-amber-500/10 p-2.5">
+                <div className="flex items-center gap-1.5 text-xs font-medium text-amber-400">
+                  <AlertTriangle size={12} />
+                  {importResult.errors.length} warning{importResult.errors.length !== 1 ? "s" : ""}
+                </div>
+                <div className="max-h-24 overflow-y-auto text-[10px] text-[var(--muted-foreground)]">
+                  {importResult.errors.map((err, i) => (
+                    <div key={i} className="py-0.5">{err}</div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <button
+              onClick={handleClose}
+              className="rounded-lg bg-[var(--primary)] px-3 py-2 text-xs font-medium text-[var(--primary-foreground)] transition-all hover:opacity-90 active:scale-95"
+            >
+              Done
+            </button>
+          </>
+        )}
+      </div>
+    </Modal>
+  );
+}
+
+// ─── Sub-components ───
+
+function ImportCategory({
+  icon,
+  label,
+  count,
+  items,
+  checked,
+  onChange,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  count: number;
+  items: string[];
+  checked: boolean;
+  onChange: (v: boolean) => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const displayItems = items.slice(0, 20);
+  const remaining = items.length - displayItems.length;
+
+  return (
+    <div className="rounded-lg border border-[var(--border)] transition-colors">
+      <label className="flex cursor-pointer items-center gap-2.5 p-2.5">
+        <input
+          type="checkbox"
+          checked={checked && count > 0}
+          disabled={count === 0}
+          onChange={(e) => onChange(e.target.checked)}
+          className="h-3.5 w-3.5 rounded border-[var(--border)] accent-[var(--primary)]"
+        />
+        <span className={cn("text-[var(--muted-foreground)]", count === 0 && "opacity-40")}>{icon}</span>
+        <span className="flex-1 text-xs font-medium">
+          {label}{" "}
+          <span className={cn("text-[var(--muted-foreground)]", count === 0 && "opacity-40")}>
+            ({count})
+          </span>
+        </span>
+        {count > 0 && (
+          <button
+            type="button"
+            onClick={(e) => { e.preventDefault(); setExpanded(!expanded); }}
+            className="text-[10px] text-[var(--primary)] hover:underline"
+          >
+            {expanded ? "Hide" : "Show"}
+          </button>
+        )}
+      </label>
+      {expanded && count > 0 && (
+        <div className="border-t border-[var(--border)] px-2.5 py-2 max-h-28 overflow-y-auto">
+          {displayItems.map((name, i) => (
+            <div key={i} className="truncate py-0.5 text-[10px] text-[var(--muted-foreground)]">
+              {name}
+            </div>
+          ))}
+          {remaining > 0 && (
+            <div className="py-0.5 text-[10px] font-medium text-[var(--muted-foreground)]">
+              … and {remaining} more
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function StatCard({ icon, label, count }: { icon: React.ReactNode; label: string; count: number }) {
+  return (
+    <div className="flex items-center gap-2 rounded-lg bg-[var(--secondary)] p-2.5">
+      <span className="text-[var(--primary)]">{icon}</span>
+      <div className="flex flex-col">
+        <span className="text-sm font-bold">{count}</span>
+        <span className="text-[10px] text-[var(--muted-foreground)]">{label}</span>
+      </div>
+    </div>
+  );
+}

@@ -2,15 +2,12 @@
 // Lorebook / World Info Types
 // ──────────────────────────────────────────────
 
-/** Lorebook entry categories (extends ST's flat model). */
+/** Top-level lorebook categories. */
 export type LorebookCategory =
-  | "location"
+  | "world"
   | "character"
-  | "item"
-  | "lore"
-  | "quest"
-  | "event"
-  | "system"
+  | "npc"
+  | "summary"
   | "uncategorized";
 
 /** Selective logic operators. */
@@ -24,11 +21,22 @@ export interface Lorebook {
   id: string;
   name: string;
   description: string;
+  /** Top-level category this lorebook belongs to */
+  category: LorebookCategory;
   /** Default scan depth for entries that don't override */
   scanDepth: number;
   /** Max tokens allocated to this lorebook */
   tokenBudget: number;
   recursiveScanning: boolean;
+  /** ID of the character this lorebook is linked to (character books) */
+  characterId: string | null;
+  /** ID of the chat this lorebook is scoped to (if any) */
+  chatId: string | null;
+  /** Whether this lorebook is globally active */
+  enabled: boolean;
+  /** Agent/generation origin tracking */
+  generatedBy: "user" | "agent" | "import" | null;
+  sourceAgentId: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -56,6 +64,8 @@ export interface LorebookEntry {
   scanDepth: number | null;
   matchWholeWords: boolean;
   caseSensitive: boolean;
+  /** Use regex matching for keys */
+  useRegex: boolean;
 
   // ── Injection settings ──
   /** 0 = before character, 1 = after character */
@@ -79,13 +89,16 @@ export interface LorebookEntry {
   groupWeight: number | null;
 
   // ── Engine extensions (beyond ST) ──
-  category: LorebookCategory;
+  /** Sub-category tag for the entry (e.g. "location", "item", "lore", "quest") */
+  tag: string;
   /** Relationships to other entries: { entryId: relationshipType } */
   relationships: Record<string, string>;
   /** Dynamic state for quests etc. (arbitrary JSON) */
   dynamicState: Record<string, unknown>;
   /** Game-state conditional activation rules */
   activationConditions: ActivationCondition[];
+  /** Schedule: only active during certain in-game times/dates */
+  schedule: LorebookSchedule | null;
 
   createdAt: string;
   updatedAt: string;
@@ -99,6 +112,16 @@ export interface ActivationCondition {
   operator: "equals" | "not_equals" | "contains" | "not_contains" | "gt" | "lt";
   /** Value to compare against */
   value: string;
+}
+
+/** Schedule for time-based activation. */
+export interface LorebookSchedule {
+  /** In-game times when active (e.g. ["morning", "evening"]) */
+  activeTimes: string[];
+  /** In-game dates/seasons when active */
+  activeDates: string[];
+  /** In-game locations where active */
+  activeLocations: string[];
 }
 
 /** Quest-specific fields for quest-type lorebook entries. */

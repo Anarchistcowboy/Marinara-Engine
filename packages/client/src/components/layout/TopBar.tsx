@@ -12,6 +12,7 @@ import {
   Gamepad2,
   MessageSquare,
   Theater,
+  UserCircle,
 } from "lucide-react";
 import { useUIStore } from "../../stores/ui.store";
 import { useChatStore } from "../../stores/chat.store";
@@ -23,6 +24,7 @@ const RIGHT_PANEL_BUTTONS = [
   { panel: "presets" as const, icon: FileText, label: "Presets", color: "from-purple-400 to-violet-500" },
   { panel: "connections" as const, icon: Link, label: "Connections", color: "from-sky-400 to-blue-500" },
   { panel: "agents" as const, icon: Sparkles, label: "Agents", color: "from-pink-300 to-purple-400" },
+  { panel: "personas" as const, icon: UserCircle, label: "Personas", color: "from-emerald-400 to-teal-500" },
   { panel: "settings" as const, icon: Settings, label: "Settings", color: "from-gray-400 to-gray-500" },
 ] as const;
 
@@ -46,13 +48,6 @@ export function TopBar() {
 
       {/* Left section: window controls + chat info */}
       <div className="flex items-center gap-2">
-        {/* OS window control dots */}
-        <div className="os-window-buttons mr-1">
-          <div className="os-window-btn close" />
-          <div className="os-window-btn minimize" />
-          <div className="os-window-btn maximize" />
-        </div>
-
         <button
           onClick={toggleSidebar}
           className="rounded-lg p-2 text-[var(--muted-foreground)] transition-all hover:bg-[var(--accent)] hover:text-[var(--y2k-pink)] active:scale-95"
@@ -75,7 +70,7 @@ export function TopBar() {
       </div>
 
       {/* Right section - Panel toggles */}
-      <div className="flex items-center gap-0.5 rounded-xl border border-[var(--y2k-purple)]/20 bg-[var(--secondary)]/50 p-1">
+      <div data-tour="panel-buttons" className="flex items-center gap-0.5 rounded-xl border border-[var(--y2k-purple)]/20 bg-[var(--secondary)]/50 p-1 max-sm:gap-0 max-sm:p-0.5">
         {RIGHT_PANEL_BUTTONS.map(({ panel, icon: Icon, label, color }) => {
           const isActive = rightPanelOpen && rightPanel === panel;
           return (
@@ -83,7 +78,7 @@ export function TopBar() {
               key={panel}
               onClick={() => toggleRightPanel(panel)}
               className={cn(
-                "relative rounded-lg p-2 transition-all duration-200",
+                "relative rounded-lg p-2 transition-all duration-200 max-sm:p-1.5",
                 isActive
                   ? "bg-[var(--accent)] text-[var(--y2k-pink)] shadow-sm shadow-pink-500/10"
                   : "text-[var(--muted-foreground)] hover:text-[var(--y2k-pink)]",

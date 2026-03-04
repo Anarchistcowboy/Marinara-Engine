@@ -1,0 +1,35 @@
+// ──────────────────────────────────────────────
+// Routes: Regex Scripts
+// ──────────────────────────────────────────────
+import type { FastifyInstance } from "fastify";
+import { createRegexScriptSchema, updateRegexScriptSchema } from "@rpg-engine/shared";
+import { createRegexScriptsStorage } from "../services/storage/regex-scripts.storage.js";
+
+export async function regexScriptsRoutes(app: FastifyInstance) {
+  const storage = createRegexScriptsStorage(app.db);
+
+  app.get("/", async () => {
+    return storage.list();
+  });
+
+  app.get<{ Params: { id: string } }>("/:id", async (req, reply) => {
+    const script = await storage.getById(req.params.id);
+    if (!script) return reply.status(404).send({ error: "Regex script not found" });
+    return script;
+  });
+
+  app.post("/", async (req) => {
+    const input = createRegexScriptSchema.parse(req.body);
+    return storage.create(input);
+  });
+
+  app.patch<{ Params: { id: string } }>("/:id", async (req) => {
+    const data = updateRegexScriptSchema.parse(req.body);
+    return storage.update(req.params.id, data);
+  });
+
+  app.delete<{ Params: { id: string } }>("/:id", async (req, reply) => {
+    await storage.remove(req.params.id);
+    return reply.status(204).send();
+  });
+}

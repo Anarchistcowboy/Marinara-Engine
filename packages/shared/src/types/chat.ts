@@ -14,6 +14,8 @@ export interface Chat {
   name: string;
   mode: ChatMode;
   characterIds: string[];
+  /** Groups related chats together (like ST "chat files" per character) */
+  groupId: string | null;
   personaId: string | null;
   promptPresetId: string | null;
   connectionId: string | null;
@@ -32,6 +34,8 @@ export interface ChatMetadata {
   agentsEnabled: boolean;
   /** Per-agent enable overrides (agentId → boolean) */
   agentOverrides: Record<string, boolean>;
+  /** Per-chat choice selections for preset choice blocks (sectionId → choiceOptionId) */
+  presetChoices: Record<string, string>;
   /** Any extra key-value data */
   [key: string]: unknown;
 }

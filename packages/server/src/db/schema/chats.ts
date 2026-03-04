@@ -9,6 +9,8 @@ export const chats = sqliteTable("chats", {
   mode: text("mode", { enum: ["conversation", "roleplay", "visual_novel"] }).notNull(),
   /** JSON array of character IDs */
   characterIds: text("character_ids").notNull().default("[]"),
+  /** Groups related chats together (like ST "chat files" per character) */
+  groupId: text("group_id"),
   personaId: text("persona_id"),
   promptPresetId: text("prompt_preset_id"),
   connectionId: text("connection_id"),

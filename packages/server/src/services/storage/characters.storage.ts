@@ -1,9 +1,9 @@
 // ──────────────────────────────────────────────
-// Storage: Characters
+// Storage: Characters, Personas & Groups
 // ──────────────────────────────────────────────
 import { eq, desc } from "drizzle-orm";
 import type { DB } from "../../db/connection.js";
-import { characters, personas } from "../../db/schema/index.js";
+import { characters, personas, characterGroups } from "../../db/schema/index.js";
 import { newId, now } from "../../utils/id-generator.js";
 import type { CharacterData } from "@rpg-engine/shared";
 
@@ -50,6 +50,14 @@ export function createCharactersStorage(db: DB) {
       return this.getById(id);
     },
 
+    async updateAvatar(id: string, avatarPath: string) {
+      await db
+        .update(characters)
+        .set({ avatarPath, updatedAt: now() })
+        .where(eq(characters.id, id));
+      return this.getById(id);
+    },
+
     async remove(id: string) {
       await db.delete(characters).where(eq(characters.id, id));
     },
@@ -65,15 +73,22 @@ export function createCharactersStorage(db: DB) {
       return rows[0] ?? null;
     },
 
-    async createPersona(name: string, description: string, avatarPath?: string) {
+    async createPersona(name: string, description: string, avatarPath?: string, extra?: { personality?: string; scenario?: string; backstory?: string; appearance?: string; nameColor?: string; dialogueColor?: string; boxColor?: string }) {
       const id = newId();
       const timestamp = now();
       await db.insert(personas).values({
         id,
         name,
         description,
+        personality: extra?.personality ?? "",
+        scenario: extra?.scenario ?? "",
+        backstory: extra?.backstory ?? "",
+        appearance: extra?.appearance ?? "",
         avatarPath: avatarPath ?? null,
         isActive: "false",
+        nameColor: extra?.nameColor ?? "",
+        dialogueColor: extra?.dialogueColor ?? "",
+        boxColor: extra?.boxColor ?? "",
         createdAt: timestamp,
         updatedAt: timestamp,
       });
@@ -89,6 +104,67 @@ export function createCharactersStorage(db: DB) {
 
     async removePersona(id: string) {
       await db.delete(personas).where(eq(personas.id, id));
+    },
+
+    async updatePersona(id: string, updates: { name?: string; description?: string; personality?: string; scenario?: string; backstory?: string; appearance?: string; avatarPath?: string; nameColor?: string; dialogueColor?: string; boxColor?: string }) {
+      const sets: Record<string, unknown> = { updatedAt: now() };
+      if (updates.name !== undefined) sets.name = updates.name;
+      if (updates.description !== undefined) sets.description = updates.description;
+      if (updates.personality !== undefined) sets.personality = updates.personality;
+      if (updates.scenario !== undefined) sets.scenario = updates.scenario;
+      if (updates.backstory !== undefined) sets.backstory = updates.backstory;
+      if (updates.appearance !== undefined) sets.appearance = updates.appearance;
+      if (updates.avatarPath !== undefined) sets.avatarPath = updates.avatarPath;
+      if (updates.nameColor !== undefined) sets.nameColor = updates.nameColor;
+      if (updates.dialogueColor !== undefined) sets.dialogueColor = updates.dialogueColor;
+      if (updates.boxColor !== undefined) sets.boxColor = updates.boxColor;
+      await db.update(personas).set(sets).where(eq(personas.id, id));
+      return this.getPersona(id);
+    },
+
+    // ── Character Groups ──
+
+    async listGroups() {
+      return db.select().from(characterGroups).orderBy(desc(characterGroups.updatedAt));
+    },
+
+    async getGroupById(id: string) {
+      const rows = await db.select().from(characterGroups).where(eq(characterGroups.id, id));
+      return rows[0] ?? null;
+    },
+
+    async createGroup(name: string, description: string, characterIds: string[] = []) {
+      const id = newId();
+      const timestamp = now();
+      await db.insert(characterGroups).values({
+        id,
+        name,
+        description,
+        characterIds: JSON.stringify(characterIds),
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      });
+      return this.getGroupById(id);
+    },
+
+    async updateGroup(id: string, updates: { name?: string; description?: string; characterIds?: string[]; avatarPath?: string }) {
+      const existing = await this.getGroupById(id);
+      if (!existing) return null;
+      await db
+        .update(characterGroups)
+        .set({
+          ...(updates.name !== undefined && { name: updates.name }),
+          ...(updates.description !== undefined && { description: updates.description }),
+          ...(updates.characterIds !== undefined && { characterIds: JSON.stringify(updates.characterIds) }),
+          ...(updates.avatarPath !== undefined && { avatarPath: updates.avatarPath }),
+          updatedAt: now(),
+        })
+        .where(eq(characterGroups.id, id));
+      return this.getGroupById(id);
+    },
+
+    async removeGroup(id: string) {
+      await db.delete(characterGroups).where(eq(characterGroups.id, id));
     },
   };
 }

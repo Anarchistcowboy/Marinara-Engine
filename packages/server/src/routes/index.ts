@@ -8,9 +8,18 @@ import { lorebooksRoutes } from "./lorebooks.routes.js";
 import { promptsRoutes } from "./prompts.routes.js";
 import { connectionsRoutes } from "./connections.routes.js";
 import { agentsRoutes } from "./agents.routes.js";
+import { customToolsRoutes } from "./custom-tools.routes.js";
 import { generateRoutes } from "./generate.routes.js";
 import { importRoutes } from "./import.routes.js";
 import { backgroundsRoutes } from "./backgrounds.routes.js";
+import { avatarsRoutes } from "./avatars.routes.js";
+import { characterMakerRoutes } from "./character-maker.routes.js";
+import { lorebookMakerRoutes } from "./lorebook-maker.routes.js";
+import { promptReviewerRoutes } from "./prompt-reviewer.routes.js";
+import { spritesRoutes } from "./sprites.routes.js";
+import { adminRoutes } from "./admin.routes.js";
+import { regexScriptsRoutes } from "./regex-scripts.routes.js";
+import { encounterRoutes } from "./encounter.routes.js";
 
 export async function registerRoutes(app: FastifyInstance) {
   await app.register(chatsRoutes, { prefix: "/api/chats" });
@@ -19,7 +28,16 @@ export async function registerRoutes(app: FastifyInstance) {
   await app.register(promptsRoutes, { prefix: "/api/prompts" });
   await app.register(connectionsRoutes, { prefix: "/api/connections" });
   await app.register(agentsRoutes, { prefix: "/api/agents" });
+  await app.register(customToolsRoutes, { prefix: "/api/custom-tools" });
   await app.register(generateRoutes, { prefix: "/api/generate" });
   await app.register(importRoutes, { prefix: "/api/import" });
   await app.register(backgroundsRoutes, { prefix: "/api/backgrounds" });
+  await app.register(avatarsRoutes, { prefix: "/api/avatars" });
+  await app.register(spritesRoutes, { prefix: "/api/sprites" });
+  await app.register(characterMakerRoutes, { prefix: "/api/character-maker" });
+  await app.register(lorebookMakerRoutes, { prefix: "/api/lorebook-maker" });
+  await app.register(promptReviewerRoutes, { prefix: "/api/prompt-reviewer" });
+  await app.register(adminRoutes, { prefix: "/api/admin" });
+  await app.register(regexScriptsRoutes, { prefix: "/api/regex-scripts" });
+  await app.register(encounterRoutes, { prefix: "/api/encounter" });
 }

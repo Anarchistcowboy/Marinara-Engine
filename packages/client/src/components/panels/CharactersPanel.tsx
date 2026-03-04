@@ -1,19 +1,62 @@
 // ──────────────────────────────────────────────
-// Panel: Characters (polished)
+// Panel: Characters (overhauled — search, groups, avatars)
 // ──────────────────────────────────────────────
-import { useCharacters, useDeleteCharacter } from "../../hooks/use-characters";
+import { useState, useMemo, useCallback } from "react";
+import {
+  useCharacters,
+  useDeleteCharacter,
+  useCharacterGroups,
+  useCreateGroup,
+  useUpdateGroup,
+  useDeleteGroup,
+} from "../../hooks/use-characters";
 import { useUpdateChat } from "../../hooks/use-chats";
 import { useChatStore } from "../../stores/chat.store";
-import { Plus, Trash2, Upload, User, Check } from "lucide-react";
+import {
+  Plus,
+  Trash2,
+  Upload,
+  User,
+  Check,
+  Search,
+  Sparkles,
+  FolderPlus,
+  FolderOpen,
+  ChevronDown,
+  ChevronRight,
+  Users,
+  X,
+  UserPlus,
+  UserMinus,
+  Pencil,
+} from "lucide-react";
 import { useUIStore } from "../../stores/ui.store";
 import { cn } from "../../lib/utils";
 
+type CharacterRow = { id: string; data: string; avatarPath: string | null };
+type GroupRow = { id: string; name: string; description: string; characterIds: string; avatarPath: string | null };
+
 export function CharactersPanel() {
   const { data: characters, isLoading } = useCharacters();
+  const { data: groups } = useCharacterGroups();
   const deleteCharacter = useDeleteCharacter();
+  const createGroup = useCreateGroup();
+  const updateGroup = useUpdateGroup();
+  const deleteGroup = useDeleteGroup();
   const openModal = useUIStore((s) => s.openModal);
+  const openCharacterDetail = useUIStore((s) => s.openCharacterDetail);
   const activeChat = useChatStore((s) => s.activeChat);
   const updateChat = useUpdateChat();
+
+  const [search, setSearch] = useState("");
+  const [groupsExpanded, setGroupsExpanded] = useState(true);
+  const [expandedGroupId, setExpandedGroupId] = useState<string | null>(null);
+  const [creatingGroup, setCreatingGroup] = useState(false);
+  const [newGroupName, setNewGroupName] = useState("");
+  const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
+  const [editGroupName, setEditGroupName] = useState("");
+  // When non-null, clicking a character adds/removes it from this group
+  const [assigningToGroup, setAssigningToGroup] = useState<string | null>(null);
 
   const chatCharacterIds: string[] = activeChat
     ? (typeof activeChat.characterIds === "string"
@@ -21,32 +64,288 @@ export function CharactersPanel() {
         : activeChat.characterIds) ?? []
     : [];
 
+  // Parse character data and filter by search
+  const parsedCharacters = useMemo(() => {
+    if (!characters) return [];
+    return (characters as CharacterRow[]).map((char) => {
+      try {
+        const parsed = typeof char.data === "string" ? JSON.parse(char.data) : char.data;
+        return { ...char, parsed };
+      } catch {
+        return { ...char, parsed: { name: "Unknown", description: "" } };
+      }
+    });
+  }, [characters]);
+
+  const charMap = useMemo(() => {
+    const map = new Map<string, { name: string; avatarPath: string | null }>();
+    for (const c of parsedCharacters) {
+      map.set(c.id, { name: c.parsed.name ?? "Unknown", avatarPath: c.avatarPath });
+    }
+    return map;
+  }, [parsedCharacters]);
+
+  const filteredCharacters = useMemo(() => {
+    if (!search.trim()) return parsedCharacters;
+    const q = search.toLowerCase();
+    return parsedCharacters.filter(
+      (c) =>
+        (c.parsed.name ?? "").toLowerCase().includes(q) ||
+        (c.parsed.description ?? "").toLowerCase().includes(q) ||
+        (c.parsed.tags ?? []).some((t: string) => t.toLowerCase().includes(q)),
+    );
+  }, [parsedCharacters, search]);
+
+  const parsedGroups = useMemo(() => {
+    if (!groups) return [];
+    return (groups as GroupRow[]).map((g) => ({
+      ...g,
+      memberIds: (() => { try { return JSON.parse(g.characterIds); } catch { return []; } })() as string[],
+    }));
+  }, [groups]);
+
   const toggleCharacter = (charId: string) => {
     if (!activeChat) return;
     const isActive = chatCharacterIds.includes(charId);
     const newIds = isActive
       ? chatCharacterIds.filter((id: string) => id !== charId)
       : [...chatCharacterIds, charId];
-    if (newIds.length === 0) return; // Must have at least one
+    if (newIds.length === 0) return;
     updateChat.mutate({ id: activeChat.id, characterIds: newIds });
   };
 
+  const addGroupToChat = (memberIds: string[]) => {
+    if (!activeChat || memberIds.length === 0) return;
+    const merged = [...new Set([...chatCharacterIds, ...memberIds])];
+    updateChat.mutate({ id: activeChat.id, characterIds: merged });
+  };
+
+  const handleCreateGroup = useCallback(() => {
+    const name = newGroupName.trim();
+    if (!name) return;
+    createGroup.mutate({ name, characterIds: [] });
+    setNewGroupName("");
+    setCreatingGroup(false);
+  }, [newGroupName, createGroup]);
+
+  const handleRenameGroup = useCallback((groupId: string) => {
+    const name = editGroupName.trim();
+    if (!name) return;
+    updateGroup.mutate({ id: groupId, name });
+    setEditingGroupId(null);
+    setEditGroupName("");
+  }, [editGroupName, updateGroup]);
+
+  const toggleGroupMember = useCallback((groupId: string, charId: string, currentMembers: string[]) => {
+    const isMember = currentMembers.includes(charId);
+    const newMembers = isMember
+      ? currentMembers.filter((id) => id !== charId)
+      : [...currentMembers, charId];
+    updateGroup.mutate({ id: groupId, characterIds: newMembers });
+  }, [updateGroup]);
+
   return (
     <div className="flex flex-col gap-2 p-3">
+      {/* Search */}
+      <div className="relative">
+        <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted-foreground)]" />
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search characters…"
+          className="w-full rounded-xl border border-[var(--border)] bg-[var(--secondary)] py-2 pl-8 pr-3 text-xs outline-none transition-colors placeholder:text-[var(--muted-foreground)]/50 focus:border-[var(--primary)]/40 focus:ring-1 focus:ring-[var(--primary)]/20"
+        />
+      </div>
+
       {/* Actions */}
-      <div className="flex gap-2">
+      <div className="flex gap-1.5">
         <button
           onClick={() => openModal("create-character")}
-          className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-pink-400 to-purple-500 px-3 py-2.5 text-xs font-medium text-white shadow-md shadow-pink-500/15 transition-all hover:shadow-lg hover:shadow-pink-500/25 active:scale-[0.98]"
+          className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-pink-400 to-purple-500 px-3 py-2 text-xs font-medium text-white shadow-md shadow-pink-500/15 transition-all hover:shadow-lg hover:shadow-pink-500/25 active:scale-[0.98]"
         >
-          <Plus size={13} /> New
+          <Plus size={12} /> New
         </button>
         <button
           onClick={() => openModal("import-character")}
-          className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-[var(--secondary)] px-3 py-2.5 text-xs font-medium text-[var(--secondary-foreground)] ring-1 ring-[var(--border)] transition-all hover:bg-[var(--accent)] active:scale-[0.98]"
+          className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-[var(--secondary)] px-3 py-2 text-xs font-medium text-[var(--secondary-foreground)] ring-1 ring-[var(--border)] transition-all hover:bg-[var(--accent)] active:scale-[0.98]"
         >
-          <Upload size={13} /> Import
+          <Upload size={12} /> Import
         </button>
+        <button
+          onClick={() => openModal("character-maker")}
+          className="flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-violet-400 to-fuchsia-500 px-3 py-2 text-xs font-medium text-white shadow-md shadow-violet-500/15 transition-all hover:shadow-lg hover:shadow-violet-500/25 active:scale-[0.98]"
+          title="AI Character Maker"
+        >
+          <Sparkles size={12} />
+        </button>
+      </div>
+
+      {/* ── Groups Section ── */}
+      <div className="mt-1">
+        <div className="flex items-center justify-between">
+          <button
+            onClick={() => setGroupsExpanded(!groupsExpanded)}
+            className="flex items-center gap-1.5 px-1 py-1 text-[11px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]"
+          >
+            {groupsExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+            <Users size={11} />
+            Groups ({parsedGroups.length})
+          </button>
+          <button
+            onClick={() => { setCreatingGroup(true); setGroupsExpanded(true); }}
+            className="rounded-lg p-1 text-[var(--muted-foreground)] transition-all hover:bg-[var(--accent)] hover:text-[var(--primary)]"
+            title="Create group"
+          >
+            <FolderPlus size={13} />
+          </button>
+        </div>
+
+        {groupsExpanded && (
+          <div className="flex flex-col gap-1 mt-1">
+            {/* Inline create group */}
+            {creatingGroup && (
+              <div className="flex items-center gap-1.5 rounded-xl bg-[var(--secondary)] p-2 ring-1 ring-[var(--primary)]/30">
+                <FolderOpen size={14} className="shrink-0 text-[var(--primary)]" />
+                <input
+                  autoFocus
+                  value={newGroupName}
+                  onChange={(e) => setNewGroupName(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") handleCreateGroup(); if (e.key === "Escape") setCreatingGroup(false); }}
+                  placeholder="Group name…"
+                  className="min-w-0 flex-1 bg-transparent text-xs outline-none placeholder:text-[var(--muted-foreground)]/50"
+                />
+                <button onClick={handleCreateGroup} disabled={!newGroupName.trim()} className="rounded-md p-0.5 text-emerald-400 hover:bg-emerald-500/15 disabled:opacity-30"><Check size={13} /></button>
+                <button onClick={() => { setCreatingGroup(false); setNewGroupName(""); }} className="rounded-md p-0.5 text-[var(--muted-foreground)] hover:bg-[var(--accent)]"><X size={13} /></button>
+              </div>
+            )}
+
+            {parsedGroups.map((group) => {
+              const isExpanded = expandedGroupId === group.id;
+              const isEditing = editingGroupId === group.id;
+              const isAssigning = assigningToGroup === group.id;
+
+              return (
+                <div key={group.id} className="rounded-xl border border-transparent transition-all hover:border-[var(--border)]/50">
+                  {/* Group header */}
+                  <div
+                    className="group flex items-center gap-2.5 rounded-xl p-2 transition-all hover:bg-[var(--sidebar-accent)] cursor-pointer"
+                    onClick={() => setExpandedGroupId(isExpanded ? null : group.id)}
+                  >
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-violet-400 to-purple-600 text-white shadow-sm">
+                      {isExpanded ? <ChevronDown size={14} /> : <FolderOpen size={14} />}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      {isEditing ? (
+                        <input
+                          autoFocus
+                          value={editGroupName}
+                          onChange={(e) => setEditGroupName(e.target.value)}
+                          onKeyDown={(e) => { if (e.key === "Enter") handleRenameGroup(group.id); if (e.key === "Escape") setEditingGroupId(null); }}
+                          onClick={(e) => e.stopPropagation()}
+                          className="w-full bg-transparent text-xs font-medium outline-none ring-1 ring-[var(--primary)]/30 rounded px-1 py-0.5"
+                        />
+                      ) : (
+                        <>
+                          <div className="truncate text-xs font-medium">{group.name}</div>
+                          <div className="truncate text-[10px] text-[var(--muted-foreground)]">
+                            {group.memberIds.length} character{group.memberIds.length !== 1 ? "s" : ""}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                    <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-all group-hover:opacity-100">
+                      {activeChat && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); addGroupToChat(group.memberIds); }}
+                          className="rounded-lg p-1 transition-all hover:bg-[var(--accent)]"
+                          title="Add all to chat"
+                        >
+                          <UserPlus size={11} className="text-[var(--primary)]" />
+                        </button>
+                      )}
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setAssigningToGroup(isAssigning ? null : group.id); }}
+                        className={cn("rounded-lg p-1 transition-all hover:bg-[var(--accent)]", isAssigning && "bg-[var(--primary)]/15 text-[var(--primary)]")}
+                        title={isAssigning ? "Done assigning" : "Add/remove members"}
+                      >
+                        <Users size={11} />
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setEditingGroupId(group.id); setEditGroupName(group.name); }}
+                        className="rounded-lg p-1 transition-all hover:bg-[var(--accent)]"
+                        title="Rename group"
+                      >
+                        <Pencil size={11} />
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); deleteGroup.mutate(group.id); }}
+                        className="rounded-lg p-1 transition-all hover:bg-[var(--destructive)]/15"
+                        title="Delete group"
+                      >
+                        <Trash2 size={11} className="text-[var(--destructive)]" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Expanded: show members */}
+                  {isExpanded && (
+                    <div className="ml-5 flex flex-col gap-0.5 border-l-2 border-[var(--border)]/40 pl-3 pb-2">
+                      {group.memberIds.length === 0 && (
+                        <div className="py-2 text-[10px] text-[var(--muted-foreground)] italic">
+                          No members — click <Users size={10} className="inline" /> to add characters
+                        </div>
+                      )}
+                      {group.memberIds.map((memberId) => {
+                        const member = charMap.get(memberId);
+                        if (!member) return null;
+                        return (
+                          <div key={memberId} className="group/member flex items-center gap-2 rounded-lg p-1.5 transition-all hover:bg-[var(--sidebar-accent)]">
+                            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg overflow-hidden bg-gradient-to-br from-pink-400 to-rose-500 text-white">
+                              {member.avatarPath ? (
+                                <img src={member.avatarPath} alt={member.name} className="h-full w-full object-cover" />
+                              ) : (
+                                <User size={12} />
+                              )}
+                            </div>
+                            <span className="flex-1 truncate text-[11px]">{member.name}</span>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); toggleGroupMember(group.id, memberId, group.memberIds); }}
+                              className="rounded p-0.5 opacity-0 transition-all hover:bg-[var(--destructive)]/15 group-hover/member:opacity-100"
+                              title="Remove from group"
+                            >
+                              <UserMinus size={11} className="text-[var(--destructive)]" />
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+
+            {parsedGroups.length === 0 && !creatingGroup && (
+              <div className="py-2 text-center text-[10px] text-[var(--muted-foreground)]">
+                No groups yet — click <FolderPlus size={10} className="inline" /> to create one
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Assign-to-group banner */}
+      {assigningToGroup && (
+        <div className="flex items-center gap-2 rounded-xl bg-[var(--primary)]/10 px-3 py-2 text-xs ring-1 ring-[var(--primary)]/30">
+          <Users size={13} className="text-[var(--primary)]" />
+          <span className="flex-1">Click characters to add/remove from <strong>{parsedGroups.find((g) => g.id === assigningToGroup)?.name}</strong></span>
+          <button onClick={() => setAssigningToGroup(null)} className="rounded p-0.5 hover:bg-[var(--accent)]"><X size={13} /></button>
+        </div>
+      )}
+
+      {/* Characters Section Header */}
+      <div className="flex items-center gap-1.5 px-1 pt-1 text-[11px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
+        <User size={11} />
+        Characters ({filteredCharacters.length})
       </div>
 
       {/* Character list */}
@@ -58,57 +357,119 @@ export function CharactersPanel() {
         </div>
       )}
 
-      {!isLoading && (!characters || (characters as unknown[]).length === 0) && (
-        <div className="flex flex-col items-center gap-2 py-8 text-center">
+      {!isLoading && filteredCharacters.length === 0 && (
+        <div className="flex flex-col items-center gap-2 py-6 text-center">
           <div className="animate-float flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-pink-400/20 to-rose-500/20">
             <User size={20} className="text-[var(--primary)]" />
           </div>
-          <p className="text-xs text-[var(--muted-foreground)]">No characters yet</p>
+          <p className="text-xs text-[var(--muted-foreground)]">
+            {search ? "No matches found" : "No characters yet"}
+          </p>
         </div>
       )}
 
       <div className="stagger-children flex flex-col gap-1">
-        {(characters as Array<{ id: string; data: string }>)?.map((char) => {
-          const parsed = (() => { try { return typeof char.data === "string" ? JSON.parse(char.data) : char.data; } catch { return {}; } })();
-          const charName = parsed.name ?? "Unnamed";
-          const charDesc = parsed.description ?? "";
+        {filteredCharacters.map((char) => {
+          const charName = char.parsed.name ?? "Unnamed";
+          const charDesc = char.parsed.description ?? "";
+          const charNameColor = (char.parsed.extensions?.nameColor as string) || undefined;
           const isSelected = chatCharacterIds.includes(char.id);
+          const avatarUrl = char.avatarPath;
+          // If assigning to a group, highlight members of that group
+          const targetGroup = assigningToGroup ? parsedGroups.find((g) => g.id === assigningToGroup) : null;
+          const isInTargetGroup = targetGroup?.memberIds.includes(char.id) ?? false;
+
           return (
-          <div
-            key={char.id}
-            onClick={() => toggleCharacter(char.id)}
-            className={cn(
-              "group flex cursor-pointer items-center gap-3 rounded-xl p-2.5 transition-all hover:bg-[var(--sidebar-accent)]",
-              isSelected && "ring-1 ring-[var(--primary)]/40 bg-[var(--primary)]/5",
-            )}
-          >
-            <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-pink-400 to-rose-500 text-white shadow-sm">
-              <User size={16} />
-              {isSelected && (
-                <div className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-[var(--primary)] shadow-sm">
-                  <Check size={10} className="text-white" />
+            <div
+              key={char.id}
+              onClick={() => {
+                if (assigningToGroup && targetGroup) {
+                  toggleGroupMember(assigningToGroup, char.id, targetGroup.memberIds);
+                } else {
+                  openCharacterDetail(char.id);
+                }
+              }}
+              className={cn(
+                "group flex items-center gap-2.5 rounded-xl p-2 transition-all hover:bg-[var(--sidebar-accent)] cursor-pointer",
+                isSelected && !assigningToGroup && "ring-1 ring-[var(--primary)]/40 bg-[var(--primary)]/5",
+                assigningToGroup && isInTargetGroup && "ring-1 ring-violet-500/50 bg-violet-500/10",
+                assigningToGroup && !isInTargetGroup && "opacity-60 hover:opacity-100",
+              )}
+            >
+              {/* Avatar */}
+              <div
+                className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl overflow-hidden bg-gradient-to-br from-pink-400 to-rose-500 text-white shadow-sm"
+              >
+                {avatarUrl ? (
+                  <img src={avatarUrl} alt={charName} className="h-full w-full object-cover" />
+                ) : (
+                  <User size={16} />
+                )}
+                {isSelected && !assigningToGroup && (
+                  <div className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-[var(--primary)] shadow-sm">
+                    <Check size={9} className="text-white" />
+                  </div>
+                )}
+                {assigningToGroup && isInTargetGroup && (
+                  <div className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-violet-500 shadow-sm">
+                    <Check size={9} className="text-white" />
+                  </div>
+                )}
+              </div>
+
+              {/* Info */}
+              <div className="min-w-0 flex-1">
+                <div
+                  className="truncate text-sm font-medium"
+                  style={
+                    charNameColor
+                      ? charNameColor.startsWith("linear-gradient")
+                        ? { background: charNameColor, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }
+                        : { color: charNameColor }
+                      : undefined
+                  }
+                >
+                  {charName}
+                </div>
+                <div className="truncate text-[10px] text-[var(--muted-foreground)]">
+                  {assigningToGroup
+                    ? (isInTargetGroup ? "In group — click to remove" : "Click to add to group")
+                    : (charDesc.slice(0, 60) || "No description")}
+                </div>
+              </div>
+
+              {/* Actions (hidden during group assign mode) */}
+              {!assigningToGroup && (
+                <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-all group-hover:opacity-100">
+                  {activeChat && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); toggleCharacter(char.id); }}
+                      className={cn(
+                        "rounded-lg p-1.5 transition-all hover:bg-[var(--accent)]",
+                        isSelected && "text-[var(--primary)]",
+                      )}
+                      title={isSelected ? "Remove from chat" : "Add to chat"}
+                    >
+                      <Check size={12} />
+                    </button>
+                  )}
+                  <button
+                    onClick={(e) => { e.stopPropagation(); deleteCharacter.mutate(char.id); }}
+                    className="rounded-lg p-1.5 transition-all hover:bg-[var(--destructive)]/15"
+                    title="Delete character"
+                  >
+                    <Trash2 size={12} className="text-[var(--destructive)]" />
+                  </button>
                 </div>
               )}
             </div>
-            <div className="min-w-0 flex-1">
-              <div className="truncate text-sm font-medium">{charName}</div>
-              <div className="truncate text-[11px] text-[var(--muted-foreground)]">
-                {charDesc.slice(0, 60) || "No description"}
-              </div>
-            </div>
-            <button
-              onClick={(e) => { e.stopPropagation(); deleteCharacter.mutate(char.id); }}
-              className="rounded-lg p-1.5 opacity-0 transition-all hover:bg-[var(--destructive)]/15 group-hover:opacity-100 active:scale-90"
-            >
-              <Trash2 size={13} className="text-[var(--destructive)]" />
-            </button>
-          </div>
           );
         })}
       </div>
-      {activeChat && (
+
+      {activeChat && !assigningToGroup && (
         <p className="px-1 text-[10px] text-[var(--muted-foreground)]/60">
-          Click to assign/remove from active chat
+          Click to edit · Use ✓ to assign/remove from chat
         </p>
       )}
     </div>

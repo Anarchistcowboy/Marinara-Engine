@@ -43,7 +43,7 @@ interface STPreset {
  * Import a SillyTavern prompt preset JSON.
  * Parses the prompt array, variable toggle groups, and generation parameters.
  */
-export async function importSTPreset(raw: Record<string, unknown>, db: DB) {
+export async function importSTPreset(raw: Record<string, unknown>, db: DB, fileName?: string) {
   const storage = createPromptsStorage(db);
   const preset = raw as unknown as STPreset;
 
@@ -52,7 +52,7 @@ export async function importSTPreset(raw: Record<string, unknown>, db: DB) {
 
   // Create the preset
   const created = await storage.create({
-    name: `Imported: ${guessPresetName(raw)}`,
+    name: `Imported: ${guessPresetName(raw, fileName)}`,
     description: "Imported from SillyTavern",
     variableGroups,
     variableValues: {},
@@ -85,10 +85,13 @@ export async function importSTPreset(raw: Record<string, unknown>, db: DB) {
   const prompts = preset.prompts ?? [];
   let sectionsCreated = 0;
 
+  // Detect XML wrapper bracket pairs and create groups for them
+  const groupIdMap = await detectAndCreateGroups(prompts, created.id, storage);
+
   for (const entry of prompts) {
-    // Detect XML tag wrapping from naming pattern (┌ = open, └ = close)
-    const isXmlWrapper = /^[┌└┎┖⌈⌊⌜⌞]/.test(entry.name);
-    const hasContent = !!(entry.content?.trim());
+    // Skip bracket entries that are just XML open/close tags (now handled by groups)
+    const isBracket = /^[┌└┎┖⌈⌊⌜⌞]/.test(entry.name);
+    if (isBracket && !(entry.content?.trim())) continue;
 
     // Map ST role to our role
     let role: "system" | "user" | "assistant" = "system";
@@ -102,6 +105,9 @@ export async function importSTPreset(raw: Record<string, unknown>, db: DB) {
     const orderInfo = orderMap.get(entry.identifier);
     const enabled = orderInfo?.enabled ?? entry.enabled ?? true;
 
+    // Assign to group if the entry was between bracket markers
+    const groupId = groupIdMap.get(entry.identifier) ?? null;
+
     await storage.createSection({
       presetId: created.id,
       identifier: entry.identifier,
@@ -113,8 +119,8 @@ export async function importSTPreset(raw: Record<string, unknown>, db: DB) {
       injectionPosition,
       injectionDepth: entry.injection_depth ?? 0,
       injectionOrder: entry.injection_order ?? 100,
-      wrapInXml: isXmlWrapper && hasContent,
-      xmlTagName: isXmlWrapper ? extractXmlTagFromName(entry.name) : "",
+      groupId,
+      markerConfig: entry.marker ? { type: entry.identifier as any } : null,
       forbidOverrides: entry.forbid_overrides ?? false,
     });
     sectionsCreated++;
@@ -159,13 +165,41 @@ function detectVariableGroups(prompts: STPromptEntry[]): PromptVariableGroup[] {
   return Array.from(groups.values());
 }
 
-function extractXmlTagFromName(name: string): string {
-  // Strip the bracket prefix and extract the tag name: "┌ role" → "role"
-  return name.replace(/^[┌└┎┖⌈⌊⌜⌞]\s*/, "").replace(/[^a-z0-9_-]/gi, "_").toLowerCase();
+/**
+ * Detect bracket-paired XML wrappers (┌ open / └ close) and create groups.
+ * Returns a map of promptIdentifier → groupId for sections inside the pair.
+ */
+async function detectAndCreateGroups(
+  prompts: STPromptEntry[],
+  presetId: string,
+  storage: ReturnType<typeof createPromptsStorage>,
+): Promise<Map<string, string>> {
+  const map = new Map<string, string>();
+  const openStack: Array<{ name: string; startIdx: number }> = [];
+
+  for (let i = 0; i < prompts.length; i++) {
+    const entry = prompts[i]!;
+    if (/^[┌┎⌈⌜]/.test(entry.name)) {
+      const groupName = entry.name.replace(/^[┌┎⌈⌜]\s*/, "").trim();
+      openStack.push({ name: groupName, startIdx: i });
+    } else if (/^[└┖⌊⌞]/.test(entry.name) && openStack.length > 0) {
+      const open = openStack.pop()!;
+      // Create a group and assign all entries between open and close
+      const group = await storage.createGroup({ presetId, name: open.name });
+      if (group) {
+        for (let j = open.startIdx + 1; j < i; j++) {
+          const inner = prompts[j]!;
+          map.set(inner.identifier, group.id);
+        }
+      }
+    }
+  }
+
+  return map;
 }
 
-function guessPresetName(raw: Record<string, unknown>): string {
-  if (typeof raw.name === "string") return raw.name;
+function guessPresetName(raw: Record<string, unknown>, fileName?: string): string {
+  if (typeof raw.name === "string" && raw.name.trim()) return raw.name;
   // Try to find a Read-Me prompt with a name
   const prompts = (raw.prompts ?? []) as STPromptEntry[];
   const readme = prompts.find((p) => p.name?.includes("Read-Me") || p.name?.includes("README"));
@@ -173,5 +207,7 @@ function guessPresetName(raw: Record<string, unknown>): string {
     const nameMatch = readme.content.match(/(?:name|title|preset)[:\s]+["']?([^"'\n]+)/i);
     if (nameMatch) return nameMatch[1]!.trim();
   }
+  // Use the file-derived name if provided
+  if (fileName) return fileName;
   return "SillyTavern Preset";
 }

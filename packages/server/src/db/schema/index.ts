@@ -8,4 +8,6 @@ export * from "./prompts.js";
 export * from "./connections.js";
 export * from "./assets.js";
 export * from "./agents.js";
+export * from "./custom-tools.js";
 export * from "./game-state.js";
+export * from "./regex-scripts.js";

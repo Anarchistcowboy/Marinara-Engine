@@ -1,13 +1,14 @@
 // ──────────────────────────────────────────────
 // Layout: Right Panel (polished with panel transitions)
 // ──────────────────────────────────────────────
-import { X, Users, BookOpen, FileText, Link, Sparkles, Settings } from "lucide-react";
+import { X, Users, BookOpen, FileText, Link, Sparkles, Settings, UserCircle } from "lucide-react";
 import { useUIStore } from "../../stores/ui.store";
 import { CharactersPanel } from "../panels/CharactersPanel";
 import { LorebooksPanel } from "../panels/LorebooksPanel";
 import { PresetsPanel } from "../panels/PresetsPanel";
 import { ConnectionsPanel } from "../panels/ConnectionsPanel";
 import { AgentsPanel } from "../panels/AgentsPanel";
+import { PersonasPanel } from "../panels/PersonasPanel";
 import { SettingsPanel } from "../panels/SettingsPanel";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -17,6 +18,7 @@ const PANEL_CONFIG: Record<string, { title: string; icon: React.ReactNode; gradi
   presets: { title: "Presets", icon: <FileText size={14} />, gradient: "from-purple-400 to-violet-500" },
   connections: { title: "Connections", icon: <Link size={14} />, gradient: "from-sky-400 to-blue-500" },
   agents: { title: "Agents", icon: <Sparkles size={14} />, gradient: "from-pink-300 to-purple-400" },
+  personas: { title: "Personas", icon: <UserCircle size={14} />, gradient: "from-emerald-400 to-teal-500" },
   settings: { title: "Settings", icon: <Settings size={14} />, gradient: "from-gray-400 to-gray-500" },
 };
 
@@ -26,6 +28,7 @@ const PANELS: Record<string, React.FC> = {
   presets: PresetsPanel,
   connections: ConnectionsPanel,
   agents: AgentsPanel,
+  personas: PersonasPanel,
   settings: SettingsPanel,
 };
 
@@ -44,12 +47,6 @@ export function RightPanel() {
         <div className="pastel-gradient h-[3px] opacity-80" />
         <div className="flex items-center justify-between px-4 py-3">
           <div className="flex items-center gap-2.5">
-            {/* OS window dots */}
-            <div className="os-window-buttons mr-1">
-              <div className="os-window-btn close" onClick={close} />
-              <div className="os-window-btn minimize" />
-              <div className="os-window-btn maximize" />
-            </div>
             <div className={`flex h-6 w-6 items-center justify-center rounded-lg bg-gradient-to-br ${config.gradient} text-white shadow-sm`}>
               {config.icon}
             </div>

@@ -1,18 +1,45 @@
 // ──────────────────────────────────────────────
 // App: Root component with layout
 // ──────────────────────────────────────────────
+import { useEffect } from "react";
 import { AppShell } from "./components/layout/AppShell";
 import { ModalRenderer } from "./components/layout/ModalRenderer";
+import { CustomThemeInjector } from "./components/layout/CustomThemeInjector";
 import { Toaster } from "sonner";
+import { useUIStore } from "./stores/ui.store";
 
 export function App() {
+  const theme = useUIStore((s) => s.theme);
+  const fontSize = useUIStore((s) => s.fontSize);
+  const visualTheme = useUIStore((s) => s.visualTheme);
+
+  // Apply theme + font size to the document root whenever they change
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    document.documentElement.style.colorScheme = theme;
+  }, [theme]);
+
+  // Apply visual theme (default / sillytavern) to the document root
+  useEffect(() => {
+    if (visualTheme && visualTheme !== "default") {
+      document.documentElement.dataset.visualTheme = visualTheme;
+    } else {
+      delete document.documentElement.dataset.visualTheme;
+    }
+  }, [visualTheme]);
+
+  useEffect(() => {
+    document.documentElement.style.fontSize = `${fontSize}px`;
+  }, [fontSize]);
+
   return (
     <>
+      <CustomThemeInjector />
       <AppShell />
       <ModalRenderer />
       <Toaster
         position="bottom-right"
-        theme="dark"
+        theme={theme}
         toastOptions={{
           style: {
             background: "var(--card)",

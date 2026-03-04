@@ -3,6 +3,7 @@
 // ──────────────────────────────────────────────
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../lib/api-client";
+import type { ConnectionTestResult } from "@rpg-engine/shared";
 
 export const connectionKeys = {
   all: ["connections"] as const,
@@ -14,6 +15,14 @@ export function useConnections() {
   return useQuery({
     queryKey: connectionKeys.list(),
     queryFn: () => api.get<unknown[]>("/connections"),
+  });
+}
+
+export function useConnection(id: string | null) {
+  return useQuery({
+    queryKey: connectionKeys.detail(id ?? ""),
+    queryFn: () => api.get<Record<string, unknown>>(`/connections/${id}`),
+    enabled: !!id,
   });
 }
 
@@ -31,6 +40,18 @@ export function useCreateConnection() {
   });
 }
 
+export function useUpdateConnection() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...data }: { id: string } & Record<string, unknown>) =>
+      api.patch(`/connections/${id}`, data),
+    onSuccess: (_data, variables) => {
+      qc.invalidateQueries({ queryKey: connectionKeys.list() });
+      qc.invalidateQueries({ queryKey: connectionKeys.detail(variables.id) });
+    },
+  });
+}
+
 export function useDeleteConnection() {
   const qc = useQueryClient();
   return useMutation({
@@ -41,6 +62,12 @@ export function useDeleteConnection() {
 
 export function useTestConnection() {
   return useMutation({
-    mutationFn: (id: string) => api.post(`/connections/${id}/test`),
+    mutationFn: (id: string) => api.post<ConnectionTestResult>(`/connections/${id}/test`),
+  });
+}
+
+export function useTestMessage() {
+  return useMutation({
+    mutationFn: (id: string) => api.post<{ success: boolean; response: string; latencyMs: number }>(`/connections/${id}/test-message`),
   });
 }

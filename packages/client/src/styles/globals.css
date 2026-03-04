@@ -1,11 +1,37 @@
 @import "tailwindcss";
 
 /* ═══════════════════════════════════════════════
-   BunnyWorks Y2K / Retro Theme for RPG Engine
+   Marinara Engine — Master Stylesheet
+   ═══════════════════════════════════════════════
+
+   TABLE OF CONTENTS
+   ─────────────────
+   1.  CSS Variables — Dark Theme (default)
+   2.  CSS Variables — Light Theme Override
+   3.  Light Theme — Component Overrides
+   4.  Base Reset & Body
+   5.  Custom Cursors
+   6.  Scrollbars
+   7.  Glass / Frosted Panels
+   8.  Glow & Shadow Effects
+   9.  Keyframe Animations
+   10. UI Components (Badges, Cards, Dividers, Buttons, Windows)
+   11. Chat Animations & Utilities
+   12. Chat: Glimmer Theme (Roleplay Bubbles)
+   13. Chat: Conversation Mode (iMessage / Texting)
+   14. Chat: Roleplay Mode (Immersive Dark RPG)
+   15. Sprites & Game HUD
+   16. Function Call Cards
+   17. Responsive / Mobile
+   18. SillyTavern Visual Theme Override
+
    ═══════════════════════════════════════════════ */
 
-/* ─── Y2K Pastel Palette ─── */
-:root {
+
+/* ─────────────────────────────────────────────
+   1. CSS VARIABLES — DARK THEME (DEFAULT)
+   ───────────────────────────────────────────── */
+:root, [data-theme="dark"] {
   /* Core tokens */
   --background: #050312;
   --foreground: #f0e8ff;
@@ -66,11 +92,124 @@
 
   /* Font */
   --font-y2k: "Space Grotesk", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+
+  /* Font size (overridden by JS) */
+  --app-font-size: 14px;
 }
+
+/* ─────────────────────────────────────────────
+   2. CSS VARIABLES — LIGHT THEME OVERRIDE
+   ───────────────────────────────────────────── */
+
+/* ─── Light Theme Override ─── */
+[data-theme="light"] {
+  --background: #faf8ff;
+  --foreground: #1a1025;
+  --card: #ffffffee;
+  --card-foreground: #1a1025;
+  --popover: #ffffffee;
+  --popover-foreground: #1a1025;
+  --primary: #e0709a;
+  --primary-foreground: #ffffff;
+  --secondary: #f0eaf7;
+  --secondary-foreground: #3a2960;
+  --muted: #f0eaf7;
+  --muted-foreground: #7a64a0;
+  --accent: #ede4f7;
+  --accent-foreground: #1a1025;
+  --destructive: #e84878;
+  --destructive-foreground: #ffffff;
+  --border: #d4adfc44;
+  --input: #d4adfc44;
+  --ring: #e0709a;
+  --sidebar: #f5f0fc;
+  --sidebar-foreground: #3a2960;
+  --sidebar-border: #d4adfc33;
+  --sidebar-accent: #e0709a18;
+  --sidebar-accent-foreground: #e0709a;
+  --glow-primary: rgba(224, 112, 154, 0.1);
+  --glow-accent: rgba(212, 173, 252, 0.08);
+
+  --y2k-pink: #e0709a;
+  --y2k-purple: #9b6ec6;
+  --y2k-blue: #5ea0d4;
+  --y2k-mint: #48c990;
+  --y2k-peach: #e8a070;
+  --y2k-lavender: #b088e0;
+  --y2k-yellow: #d4b84a;
+}
+
+/* ─────────────────────────────────────────────
+   3. LIGHT THEME — COMPONENT OVERRIDES
+   ───────────────────────────────────────────── */
+
+/* Light overrides for glass panels */
+[data-theme="light"] .glass {
+  background: linear-gradient(135deg, rgba(255,255,255,0.6) 0%, rgba(245,240,252,0.6) 100%);
+  border: 1px solid rgba(0,0,0,0.06);
+}
+
+[data-theme="light"] .glass-strong {
+  background: linear-gradient(135deg, rgba(255,255,255,0.75) 0%, rgba(245,240,252,0.75) 100%);
+  border: 1px solid rgba(0,0,0,0.08);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.06), inset 0 1px rgba(255,255,255,0.5);
+}
+
+/* Softer geometric grid in light mode */
+[data-theme="light"] .geometric-grid {
+  background-image:
+    linear-gradient(rgba(180,140,230,0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(180,140,230,0.06) 1px, transparent 1px);
+}
+
+/* Light texting bubble tweaks */
+[data-theme="light"] .texting-bubble-other {
+  background: rgba(255,255,255,0.9);
+  border-color: rgba(0,0,0,0.08);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+/* Light glow text */
+[data-theme="light"] .retro-glow-text {
+  text-shadow: 0 0 5px rgba(224,112,154,0.25), 0 0 10px rgba(155,110,198,0.15);
+}
+
+/* Softer OS window button borders in light mode */
+[data-theme="light"] .os-window-btn {
+  border-color: rgba(0,0,0,0.15);
+}
+
+/* Hide the dark scanlines + noise overlays in light mode */
+[data-theme="light"] .retro-scanlines::after {
+  opacity: 0;
+}
+[data-theme="light"] .noise-bg::before {
+  opacity: 0;
+}
+
+/* Light scrollbars */
+[data-theme="light"] ::-webkit-scrollbar-track {
+  background: rgba(212, 173, 252, 0.1);
+}
+[data-theme="light"] ::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, var(--y2k-pink) 0%, var(--y2k-purple) 100%);
+  border-color: rgba(0, 0, 0, 0.1);
+}
+
+/* Light shimmer */
+[data-theme="light"] .shimmer {
+  background: linear-gradient(90deg, #f0eaf7 25%, #ede4f7 50%, #f0eaf7 75%);
+  background-size: 200% 100%;
+}
+
+/* ─────────────────────────────────────────────
+   4. BASE RESET & BODY
+   ───────────────────────────────────────────── */
 
 /* ─── Base Reset ─── */
 * {
   @apply border-[var(--border)];
+  cursor: url("data:image/svg+xml,%3Csvg width='24' height='24' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M3 3L10 20L12 12L20 10L3 3Z' fill='%23FFB3D9' stroke='%23000' stroke-width='1'/%3E%3C/svg%3E"), auto;
 }
 
 body {
@@ -82,13 +221,18 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* ─── Y2K Custom Cursor ─── */
-* {
-  cursor: url("data:image/svg+xml,%3Csvg width='24' height='24' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M3 3L10 20L12 12L20 10L3 3Z' fill='%23FFB3D9' stroke='%23000' stroke-width='1'/%3E%3C/svg%3E"), auto;
-}
+/* ─────────────────────────────────────────────
+   5. CUSTOM CURSORS
+   ───────────────────────────────────────────── */
+
+/* ─── Y2K Custom Cursor (interactive elements) ─── */
 a, button, input, select, textarea {
   cursor: url("data:image/svg+xml,%3Csvg width='24' height='24' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M8 3L8 10L12 10L12 3L8 3Z' fill='%23A8D8FF' stroke='%23000' stroke-width='1'/%3E%3Cpath d='M3 8L10 8L10 12L3 12L3 8Z' fill='%23A8D8FF' stroke='%23000' stroke-width='1'/%3E%3C/svg%3E"), pointer;
 }
+
+/* ─────────────────────────────────────────────
+   6. SCROLLBARS
+   ───────────────────────────────────────────── */
 
 /* ─── Scrollbar styling (Retro Y2K) ─── */
 ::-webkit-scrollbar {
@@ -109,6 +253,10 @@ a, button, input, select, textarea {
   background: linear-gradient(180deg, var(--pastel-rose) 0%, var(--y2k-lavender) 100%);
 }
 
+/* ─────────────────────────────────────────────
+   7. GLASS / FROSTED PANELS
+   ───────────────────────────────────────────── */
+
 /* ─── Glass / Frosted panels (Y2K tint) ─── */
 .glass {
   backdrop-filter: blur(20px) saturate(180%);
@@ -123,6 +271,10 @@ a, button, input, select, textarea {
   box-shadow: 0 8px 32px rgba(0,0,0,0.3), inset 0 1px rgba(255,255,255,0.1);
 }
 
+/* ─────────────────────────────────────────────
+   8. GLOW & SHADOW EFFECTS
+   ───────────────────────────────────────────── */
+
 /* ─── Glow effects (Pink / Purple) ─── */
 .glow-primary {
   box-shadow:
@@ -134,6 +286,10 @@ a, button, input, select, textarea {
 .glow-sm {
   box-shadow: 0 0 8px rgba(255,179,217,0.2), 0 0 16px rgba(212,173,252,0.1);
 }
+
+/* ─────────────────────────────────────────────
+   9. KEYFRAME ANIMATIONS
+   ───────────────────────────────────────────── */
 
 /* ─── Bunny Glow animation ─── */
 @keyframes bunny-glow {
@@ -316,6 +472,10 @@ a, button, input, select, textarea {
   box-shadow: 0 0 4px currentColor;
 }
 
+/* ─────────────────────────────────────────────
+   10. UI COMPONENTS
+   ───────────────────────────────────────────── */
+
 /* ─── Retro Badge ─── */
 .retro-badge {
   display: inline-block;
@@ -397,6 +557,10 @@ a, button, input, select, textarea {
 .pulse-glow {
   animation: pulse-glow 3s ease-in-out infinite;
 }
+
+/* ─────────────────────────────────────────────
+   11. CHAT ANIMATIONS & UTILITIES
+   ───────────────────────────────────────────── */
 
 /* ─── Chat message animations ─── */
 @keyframes message-in {
@@ -581,4 +745,902 @@ a, button, input, select, textarea {
 
 .card-3d-tilt:hover {
   transform: perspective(1000px) rotateX(2deg) rotateY(5deg) translateZ(10px);
+}
+
+/* ═══════════════════════════════════════════════
+   Glimmer Theme – Roleplay Chat Styling
+   Inspired by Rivelle's Glimmer for SillyTavern
+   ═══════════════════════════════════════════════ */
+
+/* Avatar ring with dreamy glow */
+.glimmer-avatar-ring {
+  position: relative;
+  border-radius: 50%;
+  padding: 2px;
+  background: linear-gradient(
+    135deg,
+    var(--y2k-pink),
+    var(--y2k-lavender),
+    var(--y2k-purple)
+  );
+  box-shadow:
+    0 0 12px rgba(var(--y2k-pink-rgb, 255, 143, 171), 0.25),
+    0 4px 12px rgba(0, 0, 0, 0.15);
+  transition: box-shadow 0.3s, transform 0.3s;
+}
+
+.glimmer-avatar-ring:hover {
+  box-shadow:
+    0 0 20px rgba(var(--y2k-pink-rgb, 255, 143, 171), 0.4),
+    0 4px 16px rgba(0, 0, 0, 0.2);
+  transform: scale(1.05);
+}
+
+.glimmer-avatar-ring img {
+  display: block;
+  border-radius: 50%;
+  border: 2px solid var(--background);
+}
+
+/* Character name gradient text */
+.glimmer-name-gradient {
+  background: linear-gradient(
+    135deg,
+    var(--y2k-lavender) 0%,
+    var(--y2k-pink) 50%,
+    var(--y2k-purple) 100%
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Glimmer message bubbles */
+.glimmer-bubble {
+  position: relative;
+  backdrop-filter: blur(8px);
+  transition: box-shadow 0.3s, transform 0.2s;
+}
+
+.glimmer-bubble::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s;
+  box-shadow: 0 0 20px rgba(var(--y2k-pink-rgb, 255, 143, 171), 0.15);
+}
+
+.group:hover .glimmer-bubble::before {
+  opacity: 1;
+}
+
+/* Character bubble */
+.glimmer-bubble-char {
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--card) 92%, var(--y2k-lavender)),
+    color-mix(in srgb, var(--card) 96%, var(--y2k-purple))
+  );
+  color: var(--card-foreground);
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.08),
+    0 4px 16px rgba(0, 0, 0, 0.04);
+  border: 1px solid color-mix(in srgb, var(--y2k-purple) 15%, transparent);
+}
+
+/* User bubble */
+.glimmer-bubble-user {
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--y2k-pink) 85%, var(--y2k-purple)),
+    var(--y2k-purple)
+  );
+  color: #fff;
+  box-shadow:
+    0 2px 8px rgba(var(--y2k-pink-rgb, 255, 143, 171), 0.2),
+    0 4px 16px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+/* Streaming indicator ring */
+.glimmer-streaming {
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--y2k-pink) 35%, transparent),
+    0 2px 8px rgba(var(--y2k-pink-rgb, 255, 143, 171), 0.2);
+  animation: glimmer-pulse 2s ease-in-out infinite;
+}
+
+@keyframes glimmer-pulse {
+  0%, 100% {
+    box-shadow:
+      0 0 0 2px color-mix(in srgb, var(--y2k-pink) 35%, transparent),
+      0 2px 8px rgba(var(--y2k-pink-rgb, 255, 143, 171), 0.2);
+  }
+  50% {
+    box-shadow:
+      0 0 0 3px color-mix(in srgb, var(--y2k-pink) 50%, transparent),
+      0 2px 16px rgba(var(--y2k-pink-rgb, 255, 143, 171), 0.35);
+  }
+}
+
+/* ─────────────────────────────────────────────
+   13. CHAT: CONVERSATION MODE (iMESSAGE / TEXTING)
+   ───────────────────────────────────────────── */
+
+.texting-bubble {
+  word-break: break-word;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.texting-bubble:hover {
+  transform: scale(1.005);
+}
+
+/* User bubble — gradient blue/purple like iMessage */
+.texting-bubble-user {
+  background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
+  color: #fff;
+  box-shadow: 0 1px 4px rgba(99, 102, 241, 0.2);
+}
+
+/* Other / assistant bubble — soft muted card */
+.texting-bubble-other {
+  background: var(--card);
+  color: var(--card-foreground);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+  border: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+}
+
+/* ─────────────────────────────────────────────
+   14. CHAT: ROLEPLAY MODE (IMMERSIVE DARK RPG)
+   ───────────────────────────────────────────── */
+
+/* Main RP chat container */
+.rpg-chat-area {
+  background: #0a0a0f;
+}
+
+/* Dark atmospheric overlay over background image */
+.rpg-overlay {
+  background: linear-gradient(
+    180deg,
+    rgba(8, 8, 18, 0.85) 0%,
+    rgba(8, 8, 18, 0.70) 30%,
+    rgba(8, 8, 18, 0.75) 70%,
+    rgba(8, 8, 18, 0.90) 100%
+  );
+}
+
+/* Vignette edges for cinematic feel */
+.rpg-vignette {
+  background: radial-gradient(
+    ellipse at center,
+    transparent 50%,
+    rgba(0, 0, 0, 0.5) 100%
+  );
+}
+
+/* Avatar soft glow for RP mode */
+.rpg-avatar-glow {
+  position: relative;
+  border-radius: 50%;
+}
+
+.rpg-avatar-glow::after {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.3), rgba(236, 72, 153, 0.3));
+  z-index: -1;
+  filter: blur(6px);
+  opacity: 0.6;
+  transition: opacity 0.3s;
+}
+
+.rpg-avatar-glow:hover::after {
+  opacity: 1;
+}
+
+/* Character name gradient for RP */
+.rpg-char-name {
+  background: linear-gradient(135deg, #c084fc 0%, #f472b6 50%, #fb923c 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Streaming ring for RP bubbles */
+.rpg-streaming {
+  box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.25), 0 0 16px rgba(96, 165, 250, 0.1);
+  animation: rpg-stream-pulse 2s ease-in-out infinite;
+}
+
+@keyframes rpg-stream-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.25), 0 0 16px rgba(96, 165, 250, 0.1);
+  }
+  50% {
+    box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.4), 0 0 24px rgba(96, 165, 250, 0.2);
+  }
+}
+
+/* HUD bar styles */
+.rpg-hud {
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+/* ─────────────────────────────────────────────
+   17. RESPONSIVE / MOBILE
+   ───────────────────────────────────────────── */
+
+/* ─── Tablet & below (< 1024px) ─── */
+@media (max-width: 1023px) {
+  /* Shrink right panel to overlay width */
+  .right-panel-overlay {
+    width: 100% !important;
+    max-width: 360px;
+  }
+}
+
+/* ─── Mobile (< 768px) ─── */
+@media (max-width: 767px) {
+  /* App shell: stack vertically, sidebar + panel overlay */
+  .app-sidebar-mobile {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 40;
+    width: 100% !important;
+    max-width: 300px;
+  }
+
+  .app-sidebar-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 39;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(2px);
+  }
+
+  /* Right panel: full-screen overlay on mobile */
+  .app-right-panel-mobile {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 45;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* TopBar: compact layout */
+  .topbar-panel-buttons {
+    gap: 0 !important;
+    padding: 2px !important;
+  }
+
+  .topbar-panel-buttons button {
+    padding: 6px !important;
+  }
+
+  /* Retro badge: smaller on mobile */
+  .retro-badge {
+    padding: 2px 6px;
+    font-size: 9px;
+  }
+
+  /* Hide decorative stars on mobile */
+  .y2k-star,
+  .y2k-star-md,
+  .y2k-star-lg {
+    display: none;
+  }
+
+  /* Scanlines: disable on mobile for performance */
+  .retro-scanlines::after {
+    display: none;
+  }
+
+  /* Noise: disable on mobile for performance */
+  .noise-bg::before {
+    display: none;
+  }
+
+  /* Chat messages: wider on mobile */
+  .chat-msg-max-width {
+    max-width: 90% !important;
+  }
+
+  /* Character editor: collapse tab rail to horizontal */
+  .char-editor-body {
+    flex-direction: column !important;
+  }
+
+  .char-editor-tab-rail {
+    width: 100% !important;
+    flex-direction: row !important;
+    overflow-x: auto !important;
+    border-right: none !important;
+    border-bottom: 1px solid var(--border) !important;
+    padding: 4px !important;
+  }
+
+  .char-editor-tab-rail button {
+    white-space: nowrap;
+  }
+
+  .char-editor-content {
+    padding: 16px !important;
+  }
+
+  /* Quick start cards: smaller on mobile */
+  .quick-start-cards {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  /* Agent editor: tighter padding */
+  .agent-editor-body {
+    padding: 16px !important;
+  }
+
+  .agent-editor-body .phase-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ─── Small mobile (< 480px) ─── */
+@media (max-width: 479px) {
+  /* Hide topbar chat mode badge */
+  .retro-badge {
+    display: none;
+  }
+
+  /* Even more compact topbar */
+  .topbar-chat-info span.text-sm {
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+/* ─── Touch-friendly sizing ─── */
+@media (pointer: coarse) {
+  /* Larger tap targets */
+  button:not(.btn-icon-sm) {
+    min-height: 36px;
+    min-width: 36px;
+  }
+
+  /* Scrollbars: thinner on touch */
+  ::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    border-width: 0;
+  }
+}
+
+/* ─────────────────────────────────────────────
+   15. SPRITES & GAME HUD
+   ───────────────────────────────────────────── */
+
+/* ─── Sprite display for roleplay ─── */
+.rpg-sprite-container {
+  position: absolute;
+  bottom: 0;
+  pointer-events: none;
+  z-index: 5;
+  transition: opacity 0.5s ease, transform 0.5s ease;
+}
+
+.rpg-sprite-container img {
+  max-height: 70vh;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.5));
+}
+
+.rpg-sprite-left {
+  left: 2%;
+}
+
+.rpg-sprite-right {
+  right: 2%;
+}
+
+.rpg-sprite-center {
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+/* Sprite fade transition */
+.rpg-sprite-enter {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.rpg-sprite-active {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ─────────────────────────────────────────────
+   16. FUNCTION CALL CARDS
+   ───────────────────────────────────────────── */
+
+/* ─── Function call result card ─── */
+.fn-call-card {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(168, 85, 247, 0.08) 100%);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  border-radius: 12px;
+  padding: 12px;
+  margin: 8px 0;
+  font-size: 12px;
+}
+
+.fn-call-card .fn-name {
+  font-weight: 600;
+  color: var(--y2k-purple);
+  font-family: monospace;
+}
+
+.fn-call-card .fn-args {
+  background: var(--secondary);
+  border-radius: 8px;
+  padding: 8px;
+  margin-top: 6px;
+  font-family: monospace;
+  font-size: 11px;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.fn-call-card .fn-result {
+  margin-top: 6px;
+  padding: 8px;
+  background: rgba(34, 197, 94, 0.08);
+  border: 1px solid rgba(34, 197, 94, 0.2);
+  border-radius: 8px;
+  font-family: monospace;
+  font-size: 11px;
+}
+
+/* ─── Game Stats HUD ─── */
+.game-stats-bar {
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+
+.game-stats-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.5s ease;
+}
+
+.game-stats-bar-hp { background: linear-gradient(90deg, #ef4444, #f87171); }
+.game-stats-bar-mp { background: linear-gradient(90deg, #3b82f6, #60a5fa); }
+.game-stats-bar-xp { background: linear-gradient(90deg, #a855f7, #c084fc); }
+.game-stats-bar-stamina { background: linear-gradient(90deg, #22c55e, #4ade80); }
+
+.game-inventory-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+  font-size: 11px;
+  transition: background 0.2s;
+}
+
+.game-inventory-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   SILLYTAVERN VISUAL THEME
+   A faithful recreation of SillyTavern's classic dark UI.
+   Activated via  data-visual-theme="sillytavern"  on :root.
+   ═══════════════════════════════════════════════════════════ */
+
+/* ─── Dark-mode variable overrides ─── */
+[data-visual-theme="sillytavern"],
+[data-visual-theme="sillytavern"][data-theme="dark"] {
+  /* Core ST palette */
+  --background: #0b0b0f;
+  --foreground: #cccccc;
+  --card: rgba(21, 21, 29, 0.92);
+  --card-foreground: #cccccc;
+  --popover: rgba(21, 21, 29, 0.95);
+  --popover-foreground: #cccccc;
+  --primary: #4a72b0;
+  --primary-foreground: #ffffff;
+  --secondary: #16161e;
+  --secondary-foreground: #c0bfcf;
+  --muted: #1c1c28;
+  --muted-foreground: #8888a0;
+  --accent: #1e1e2e;
+  --accent-foreground: #cccccc;
+  --destructive: #c44040;
+  --destructive-foreground: #ffffff;
+  --border: rgba(255, 255, 255, 0.08);
+  --input: rgba(255, 255, 255, 0.08);
+  --ring: #4a72b0;
+  --radius: 0.5rem;
+  --sidebar: #0e0e14;
+  --sidebar-foreground: #c0bfcf;
+  --sidebar-border: rgba(255, 255, 255, 0.06);
+  --sidebar-accent: rgba(74, 114, 176, 0.12);
+  --sidebar-accent-foreground: #5d8fd4;
+  --glow-primary: rgba(74, 114, 176, 0.08);
+  --glow-accent: rgba(74, 114, 176, 0.05);
+
+  /* Map Y2K palette → muted ST equivalents */
+  --y2k-pink: #5d8fd4;
+  --y2k-purple: #7a7aaa;
+  --y2k-blue: #5d8fd4;
+  --y2k-mint: #55a87a;
+  --y2k-peach: #c49a6c;
+  --y2k-lavender: #9090b8;
+  --y2k-yellow: #c4b060;
+
+  --pastel-rose: #9090b8;
+  --pastel-lilac: #7a7aaa;
+  --pastel-sky: #5d8fd4;
+  --pastel-mint: #55a87a;
+  --pastel-coral: #c07070;
+  --pastel-peach: #c49a6c;
+  --pastel-lavender: #9090b8;
+  --pastel-periwinkle: #7a7aaa;
+
+  --rgb-red: #c44040;
+  --rgb-orange: #c49a6c;
+  --rgb-yellow: #c4b060;
+  --rgb-green: #55a87a;
+  --rgb-cyan: #50a0b0;
+  --rgb-blue: #5d8fd4;
+  --rgb-indigo: #7a7aaa;
+  --rgb-violet: #9070a0;
+
+  /* Font: Noto Sans is SillyTavern's house font */
+  --font-y2k: "Noto Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+/* ─── Light-mode overrides for ST theme ─── */
+[data-visual-theme="sillytavern"][data-theme="light"] {
+  --background: #e8e8ec;
+  --foreground: #1a1a24;
+  --card: rgba(255, 255, 255, 0.88);
+  --card-foreground: #1a1a24;
+  --popover: rgba(255, 255, 255, 0.92);
+  --popover-foreground: #1a1a24;
+  --primary: #3a609a;
+  --primary-foreground: #ffffff;
+  --secondary: #d8d8e0;
+  --secondary-foreground: #2a2a3e;
+  --muted: #d0d0da;
+  --muted-foreground: #606078;
+  --accent: #d4d4de;
+  --accent-foreground: #1a1a24;
+  --destructive: #b03030;
+  --destructive-foreground: #ffffff;
+  --border: rgba(0, 0, 0, 0.1);
+  --input: rgba(0, 0, 0, 0.1);
+  --ring: #3a609a;
+  --sidebar: #dddde4;
+  --sidebar-foreground: #2a2a3e;
+  --sidebar-border: rgba(0, 0, 0, 0.08);
+  --sidebar-accent: rgba(58, 96, 154, 0.1);
+  --sidebar-accent-foreground: #3a609a;
+  --glow-primary: rgba(58, 96, 154, 0.06);
+  --glow-accent: rgba(58, 96, 154, 0.04);
+
+  --y2k-pink: #3a609a;
+  --y2k-purple: #5a5a80;
+  --y2k-blue: #3a609a;
+  --y2k-mint: #2a7a50;
+  --y2k-peach: #a07a4a;
+  --y2k-lavender: #606088;
+  --y2k-yellow: #9a8a30;
+}
+
+/* ─── Disable custom cursors ─── */
+[data-visual-theme="sillytavern"] *,
+[data-visual-theme="sillytavern"] a,
+[data-visual-theme="sillytavern"] button,
+[data-visual-theme="sillytavern"] input,
+[data-visual-theme="sillytavern"] select,
+[data-visual-theme="sillytavern"] textarea {
+  cursor: unset !important;
+}
+[data-visual-theme="sillytavern"] a,
+[data-visual-theme="sillytavern"] button {
+  cursor: pointer !important;
+}
+
+/* ─── Disable glow / decorative effects ─── */
+[data-visual-theme="sillytavern"] .glow-primary,
+[data-visual-theme="sillytavern"] .glow-sm {
+  box-shadow: none;
+}
+
+[data-visual-theme="sillytavern"] .bunny-glow {
+  animation: none;
+  box-shadow: none;
+}
+
+[data-visual-theme="sillytavern"] .gradient-border::before {
+  display: none;
+}
+
+[data-visual-theme="sillytavern"] .btn-glow::after {
+  display: none;
+}
+
+[data-visual-theme="sillytavern"] .pulse-glow {
+  animation: none;
+  box-shadow: none;
+}
+
+[data-visual-theme="sillytavern"] .animate-pulse-ring {
+  animation: none;
+  box-shadow: none;
+}
+
+/* ─── Disable scanlines & noise overlays ─── */
+[data-visual-theme="sillytavern"] .retro-scanlines::after {
+  display: none !important;
+}
+
+[data-visual-theme="sillytavern"] .noise-bg::before {
+  display: none !important;
+}
+
+/* ─── Disable decorative stars ─── */
+[data-visual-theme="sillytavern"] .y2k-star,
+[data-visual-theme="sillytavern"] .y2k-star-md,
+[data-visual-theme="sillytavern"] .y2k-star-lg {
+  display: none !important;
+}
+
+/* ─── Simpler scrollbar ─── */
+[data-visual-theme="sillytavern"] ::-webkit-scrollbar {
+  width: 8px;
+}
+
+[data-visual-theme="sillytavern"] ::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+[data-visual-theme="sillytavern"] ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border: none;
+  border-radius: 4px;
+}
+
+[data-visual-theme="sillytavern"] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* ─── Flat glass panels (no blur / gradients) ─── */
+[data-visual-theme="sillytavern"] .glass {
+  backdrop-filter: none;
+  background: var(--card);
+  border: 1px solid var(--border);
+}
+
+[data-visual-theme="sillytavern"] .glass-strong {
+  backdrop-filter: none;
+  background: var(--card);
+  border: 1px solid var(--border);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+
+/* ─── Simpler retro divider → solid muted line ─── */
+[data-visual-theme="sillytavern"] .retro-divider {
+  background: var(--border);
+  animation: none;
+  mask-image: none;
+}
+
+/* ─── Simpler retro badge ─── */
+[data-visual-theme="sillytavern"] .retro-badge {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--primary-foreground);
+}
+
+/* ─── Simpler retro card ─── */
+[data-visual-theme="sillytavern"] .retro-card {
+  backdrop-filter: none;
+  background: var(--card);
+  border: 1px solid var(--border);
+  animation: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+[data-visual-theme="sillytavern"] .retro-card:hover {
+  transform: none;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.3);
+}
+
+/* ─── OS-window → clean ST panel ─── */
+[data-visual-theme="sillytavern"] .os-window {
+  backdrop-filter: none;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+[data-visual-theme="sillytavern"] .os-window:hover {
+  transform: none;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.3);
+}
+
+[data-visual-theme="sillytavern"] .os-title-bar {
+  border-bottom-color: var(--border);
+}
+
+[data-visual-theme="sillytavern"] .os-window-btn.close    { background: #c44040; }
+[data-visual-theme="sillytavern"] .os-window-btn.minimize  { background: #b09430; }
+[data-visual-theme="sillytavern"] .os-window-btn.maximize  { background: #409040; }
+
+[data-visual-theme="sillytavern"] .os-window-btn:hover {
+  box-shadow: none;
+}
+
+/* ─── Disable retro glow text ─── */
+[data-visual-theme="sillytavern"] .retro-glow-text {
+  color: var(--primary);
+  text-shadow: none;
+}
+
+/* ─── Disable 3D card tilt ─── */
+[data-visual-theme="sillytavern"] .card-3d-tilt:hover {
+  transform: none;
+}
+
+/* ─── Pastel gradient bar → solid ST accent ─── */
+[data-visual-theme="sillytavern"] .pastel-gradient {
+  background: var(--primary);
+  animation: none;
+}
+
+/* ─── Glimmer bubbles → flat ST message style ─── */
+[data-visual-theme="sillytavern"] .glimmer-avatar-ring {
+  background: var(--border);
+  box-shadow: none;
+}
+
+[data-visual-theme="sillytavern"] .glimmer-avatar-ring:hover {
+  box-shadow: none;
+  transform: none;
+}
+
+[data-visual-theme="sillytavern"] .glimmer-name-gradient {
+  background: none;
+  -webkit-background-clip: unset;
+  -webkit-text-fill-color: var(--primary);
+  background-clip: unset;
+}
+
+[data-visual-theme="sillytavern"] .glimmer-bubble-char {
+  background: var(--card);
+  border: 1px solid var(--border);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+
+[data-visual-theme="sillytavern"] .glimmer-bubble-user {
+  background: var(--primary);
+  color: var(--primary-foreground);
+  border: 1px solid var(--primary);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+
+[data-visual-theme="sillytavern"] .glimmer-streaming {
+  box-shadow: 0 0 0 2px rgba(74, 114, 176, 0.3);
+  animation: st-stream-pulse 2s ease-in-out infinite;
+}
+
+@keyframes st-stream-pulse {
+  0%, 100% { box-shadow: 0 0 0 2px rgba(74, 114, 176, 0.3); }
+  50%      { box-shadow: 0 0 0 3px rgba(74, 114, 176, 0.5); }
+}
+
+/* ─── Texting bubbles → ST style ─── */
+[data-visual-theme="sillytavern"] .texting-bubble-user {
+  background: var(--primary);
+  color: var(--primary-foreground);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+
+[data-visual-theme="sillytavern"] .texting-bubble-other {
+  background: var(--card);
+  border-color: var(--border);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* ─── RPG mode → muted ST feel ─── */
+[data-visual-theme="sillytavern"] .rpg-chat-area {
+  background: var(--background);
+}
+
+[data-visual-theme="sillytavern"] .rpg-avatar-glow::after {
+  display: none;
+}
+
+[data-visual-theme="sillytavern"] .rpg-char-name {
+  background: none;
+  -webkit-background-clip: unset;
+  -webkit-text-fill-color: var(--primary);
+  background-clip: unset;
+}
+
+[data-visual-theme="sillytavern"] .rpg-streaming {
+  animation-name: st-stream-pulse;
+}
+
+/* ─── Function call card → cleaner look ─── */
+[data-visual-theme="sillytavern"] .fn-call-card {
+  background: rgba(74, 114, 176, 0.06);
+  border-color: rgba(74, 114, 176, 0.2);
+}
+
+[data-visual-theme="sillytavern"] .fn-call-card .fn-name {
+  color: var(--primary);
+}
+
+/* ─── Shimmer → neutral grey ─── */
+[data-visual-theme="sillytavern"] .shimmer {
+  background: linear-gradient(90deg, #16161e 25%, #1e1e2e 50%, #16161e 75%);
+  background-size: 200% 100%;
+}
+
+/* ─── OS button pastel → flat ST button ─── */
+[data-visual-theme="sillytavern"] .os-button-pastel {
+  background: var(--primary);
+  color: var(--primary-foreground);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+}
+
+[data-visual-theme="sillytavern"] .os-button-pastel:hover {
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+/* ─── Light-mode ST overrides for glass ─── */
+[data-visual-theme="sillytavern"][data-theme="light"] .glass {
+  background: var(--card);
+  border: 1px solid var(--border);
+}
+
+[data-visual-theme="sillytavern"][data-theme="light"] .glass-strong {
+  background: var(--card);
+  border: 1px solid var(--border);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+/* ─── Light-mode ST scrollbar ─── */
+[data-visual-theme="sillytavern"][data-theme="light"] ::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+[data-visual-theme="sillytavern"][data-theme="light"] ::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.12);
+  border-color: transparent;
+}
+
+[data-visual-theme="sillytavern"][data-theme="light"] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+/* ─── Light-mode ST shimmer ─── */
+[data-visual-theme="sillytavern"][data-theme="light"] .shimmer {
+  background: linear-gradient(90deg, #d8d8e0 25%, #e0e0e8 50%, #d8d8e0 75%);
+  background-size: 200% 100%;
 }

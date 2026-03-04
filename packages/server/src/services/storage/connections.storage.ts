@@ -1,7 +1,7 @@
 // ──────────────────────────────────────────────
 // Storage: API Connections
 // ──────────────────────────────────────────────
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and } from "drizzle-orm";
 import type { DB } from "../../db/connection.js";
 import { apiConnections } from "../../db/schema/index.js";
 import { newId, now } from "../../utils/id-generator.js";
@@ -49,6 +49,7 @@ export function createConnectionsStorage(db: DB) {
         model: input.model ?? "",
         maxContext: input.maxContext ?? 128000,
         isDefault: String(input.isDefault ?? false),
+        useForRandom: String(input.useForRandom ?? false),
         createdAt: timestamp,
         updatedAt: timestamp,
       });
@@ -69,8 +70,20 @@ export function createConnectionsStorage(db: DB) {
         }
         updateFields.isDefault = String(data.isDefault);
       }
+      if (data.useForRandom !== undefined) {
+        updateFields.useForRandom = String(data.useForRandom);
+      }
       await db.update(apiConnections).set(updateFields).where(eq(apiConnections.id, id));
       return this.getById(id);
+    },
+
+    /** Get all connections marked for the random pool (with decrypted keys). */
+    async listRandomPool() {
+      const rows = await db
+        .select()
+        .from(apiConnections)
+        .where(eq(apiConnections.useForRandom, "true"));
+      return rows.map((r: any) => ({ ...r, apiKey: decryptApiKey(r.apiKeyEncrypted) }));
     },
 
     async remove(id: string) {

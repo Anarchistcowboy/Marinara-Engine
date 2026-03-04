@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────
-// Schema: Characters & Personas
+// Schema: Characters, Personas & Character Groups
 // ──────────────────────────────────────────────
 import { sqliteTable, text } from "drizzle-orm/sqlite-core";
 
@@ -17,8 +17,29 @@ export const personas = sqliteTable("personas", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
   description: text("description").notNull().default(""),
+  personality: text("personality").notNull().default(""),
+  scenario: text("scenario").notNull().default(""),
+  backstory: text("backstory").notNull().default(""),
+  appearance: text("appearance").notNull().default(""),
   avatarPath: text("avatar_path"),
   isActive: text("is_active").notNull().default("false"),
+  /** Name display color/gradient (CSS value) */
+  nameColor: text("name_color").notNull().default(""),
+  /** Dialogue highlight color */
+  dialogueColor: text("dialogue_color").notNull().default(""),
+  /** Chat bubble background color */
+  boxColor: text("box_color").notNull().default(""),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+});
+
+export const characterGroups = sqliteTable("character_groups", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description").notNull().default(""),
+  avatarPath: text("avatar_path"),
+  /** JSON array of character IDs */
+  characterIds: text("character_ids").notNull().default("[]"),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
 });

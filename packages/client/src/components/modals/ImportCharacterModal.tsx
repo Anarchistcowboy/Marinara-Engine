@@ -6,6 +6,7 @@ import { Modal } from "../ui/Modal";
 import { Upload, FileJson, Image, CheckCircle, XCircle, Loader2 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { characterKeys } from "../../hooks/use-characters";
+import { parsePngCharacterCard } from "../../lib/png-parser";
 
 interface Props {
   open: boolean;
@@ -24,13 +25,26 @@ export function ImportCharacterModal({ open, onClose }: Props) {
     setMessage("");
 
     try {
-      const text = await file.text();
-      const json = JSON.parse(text);
+      const isPng = file.name.toLowerCase().endsWith(".png") || file.type === "image/png";
+
+      let json: Record<string, unknown>;
+      let avatarDataUrl: string | null = null;
+
+      if (isPng) {
+        // Extract character JSON and image from PNG tEXt chunk
+        const result = await parsePngCharacterCard(file);
+        json = result.json;
+        avatarDataUrl = result.imageDataUrl;
+      } else {
+        // Plain JSON file
+        const text = await file.text();
+        json = JSON.parse(text);
+      }
 
       const res = await fetch("/api/import/st-character", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(json),
+        body: JSON.stringify({ ...json, _avatarDataUrl: avatarDataUrl }),
       });
       const data = await res.json();
       if (data.success) {
@@ -41,9 +55,9 @@ export function ImportCharacterModal({ open, onClose }: Props) {
         setStatus("error");
         setMessage(data.error ?? "Import failed");
       }
-    } catch {
+    } catch (err) {
       setStatus("error");
-      setMessage("Failed to parse file — must be valid JSON");
+      setMessage(err instanceof Error ? err.message : "Failed to parse file");
     }
   };
 

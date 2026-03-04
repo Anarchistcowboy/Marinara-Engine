@@ -1,21 +1,88 @@
 // ──────────────────────────────────────────────
 // Storage: Lorebooks
 // ──────────────────────────────────────────────
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and, like, inArray } from "drizzle-orm";
 import type { DB } from "../../db/connection.js";
 import { lorebooks, lorebookEntries } from "../../db/schema/index.js";
 import { newId, now } from "../../utils/id-generator.js";
-import type { CreateLorebookInput, CreateLorebookEntryInput } from "@rpg-engine/shared";
+import type {
+  CreateLorebookInput,
+  UpdateLorebookInput,
+  CreateLorebookEntryInput,
+  UpdateLorebookEntryInput,
+} from "@rpg-engine/shared";
+
+/** Parse DB row booleans ("true"/"false") → real booleans and JSON strings → objects. */
+function parseLorebookRow(row: Record<string, unknown>) {
+  return {
+    ...row,
+    recursiveScanning: row.recursiveScanning === "true",
+    enabled: row.enabled === "true",
+    generatedBy: row.generatedBy || null,
+    sourceAgentId: row.sourceAgentId || null,
+    characterId: row.characterId || null,
+    chatId: row.chatId || null,
+  };
+}
+
+function parseEntryRow(row: Record<string, unknown>) {
+  return {
+    ...row,
+    enabled: row.enabled === "true",
+    constant: row.constant === "true",
+    selective: row.selective === "true",
+    matchWholeWords: row.matchWholeWords === "true",
+    caseSensitive: row.caseSensitive === "true",
+    useRegex: row.useRegex === "true",
+    keys: JSON.parse((row.keys as string) || "[]"),
+    secondaryKeys: JSON.parse((row.secondaryKeys as string) || "[]"),
+    relationships: JSON.parse((row.relationships as string) || "{}"),
+    dynamicState: JSON.parse((row.dynamicState as string) || "{}"),
+    activationConditions: JSON.parse((row.activationConditions as string) || "[]"),
+    schedule: row.schedule ? JSON.parse(row.schedule as string) : null,
+  };
+}
 
 export function createLorebooksStorage(db: DB) {
   return {
+    // ── Lorebooks ──
+
     async list() {
-      return db.select().from(lorebooks).orderBy(desc(lorebooks.updatedAt));
+      const rows = await db.select().from(lorebooks).orderBy(desc(lorebooks.updatedAt));
+      return rows.map((r) => parseLorebookRow(r as Record<string, unknown>));
+    },
+
+    async listByCategory(category: string) {
+      const rows = await db
+        .select()
+        .from(lorebooks)
+        .where(eq(lorebooks.category, category))
+        .orderBy(desc(lorebooks.updatedAt));
+      return rows.map((r) => parseLorebookRow(r as Record<string, unknown>));
+    },
+
+    async listByCharacter(characterId: string) {
+      const rows = await db
+        .select()
+        .from(lorebooks)
+        .where(eq(lorebooks.characterId, characterId))
+        .orderBy(desc(lorebooks.updatedAt));
+      return rows.map((r) => parseLorebookRow(r as Record<string, unknown>));
+    },
+
+    async listByChat(chatId: string) {
+      const rows = await db
+        .select()
+        .from(lorebooks)
+        .where(eq(lorebooks.chatId, chatId))
+        .orderBy(desc(lorebooks.updatedAt));
+      return rows.map((r) => parseLorebookRow(r as Record<string, unknown>));
     },
 
     async getById(id: string) {
       const rows = await db.select().from(lorebooks).where(eq(lorebooks.id, id));
-      return rows[0] ?? null;
+      const row = rows[0];
+      return row ? parseLorebookRow(row as Record<string, unknown>) : null;
     },
 
     async create(input: CreateLorebookInput) {
@@ -25,12 +92,36 @@ export function createLorebooksStorage(db: DB) {
         id,
         name: input.name,
         description: input.description ?? "",
+        category: input.category ?? "uncategorized",
         scanDepth: input.scanDepth ?? 2,
         tokenBudget: input.tokenBudget ?? 2048,
         recursiveScanning: String(input.recursiveScanning ?? false),
+        characterId: input.characterId ?? null,
+        chatId: input.chatId ?? null,
+        enabled: String(input.enabled ?? true),
+        generatedBy: input.generatedBy ?? null,
+        sourceAgentId: input.sourceAgentId ?? null,
         createdAt: timestamp,
         updatedAt: timestamp,
       });
+      return this.getById(id);
+    },
+
+    async update(id: string, input: UpdateLorebookInput) {
+      const updates: Record<string, unknown> = { updatedAt: now() };
+      if (input.name !== undefined) updates.name = input.name;
+      if (input.description !== undefined) updates.description = input.description;
+      if (input.category !== undefined) updates.category = input.category;
+      if (input.scanDepth !== undefined) updates.scanDepth = input.scanDepth;
+      if (input.tokenBudget !== undefined) updates.tokenBudget = input.tokenBudget;
+      if (input.recursiveScanning !== undefined) updates.recursiveScanning = String(input.recursiveScanning);
+      if (input.characterId !== undefined) updates.characterId = input.characterId;
+      if (input.chatId !== undefined) updates.chatId = input.chatId;
+      if (input.enabled !== undefined) updates.enabled = String(input.enabled);
+      if (input.generatedBy !== undefined) updates.generatedBy = input.generatedBy;
+      if (input.sourceAgentId !== undefined) updates.sourceAgentId = input.sourceAgentId;
+
+      await db.update(lorebooks).set(updates).where(eq(lorebooks.id, id));
       return this.getById(id);
     },
 
@@ -41,16 +132,50 @@ export function createLorebooksStorage(db: DB) {
     // ── Entries ──
 
     async listEntries(lorebookId: string) {
-      return db
+      const rows = await db
         .select()
         .from(lorebookEntries)
         .where(eq(lorebookEntries.lorebookId, lorebookId))
         .orderBy(lorebookEntries.order);
+      return rows.map((r) => parseEntryRow(r as Record<string, unknown>));
+    },
+
+    /** Get all entries across multiple lorebooks (for prompt injection). */
+    async listEntriesByLorebooks(lorebookIds: string[]) {
+      if (lorebookIds.length === 0) return [];
+      const rows = await db
+        .select()
+        .from(lorebookEntries)
+        .where(inArray(lorebookEntries.lorebookId, lorebookIds))
+        .orderBy(lorebookEntries.order);
+      return rows.map((r) => parseEntryRow(r as Record<string, unknown>));
+    },
+
+    /** Get all enabled entries from all enabled lorebooks (for keyword scanning). */
+    async listActiveEntries() {
+      const enabledBooks = await db
+        .select({ id: lorebooks.id })
+        .from(lorebooks)
+        .where(eq(lorebooks.enabled, "true"));
+      const bookIds = enabledBooks.map((b) => b.id);
+      if (bookIds.length === 0) return [];
+      const rows = await db
+        .select()
+        .from(lorebookEntries)
+        .where(
+          and(
+            inArray(lorebookEntries.lorebookId, bookIds),
+            eq(lorebookEntries.enabled, "true"),
+          ),
+        )
+        .orderBy(lorebookEntries.order);
+      return rows.map((r) => parseEntryRow(r as Record<string, unknown>));
     },
 
     async getEntry(id: string) {
       const rows = await db.select().from(lorebookEntries).where(eq(lorebookEntries.id, id));
-      return rows[0] ?? null;
+      const row = rows[0];
+      return row ? parseEntryRow(row as Record<string, unknown>) : null;
     },
 
     async createEntry(input: CreateLorebookEntryInput) {
@@ -71,6 +196,7 @@ export function createLorebooksStorage(db: DB) {
         scanDepth: input.scanDepth ?? null,
         matchWholeWords: String(input.matchWholeWords ?? false),
         caseSensitive: String(input.caseSensitive ?? false),
+        useRegex: String(input.useRegex ?? false),
         position: input.position ?? 0,
         depth: input.depth ?? 4,
         order: input.order ?? 100,
@@ -80,18 +206,76 @@ export function createLorebooksStorage(db: DB) {
         delay: input.delay ?? null,
         group: input.group ?? "",
         groupWeight: input.groupWeight ?? null,
-        category: input.category ?? "uncategorized",
+        tag: input.tag ?? "",
         relationships: JSON.stringify(input.relationships ?? {}),
         dynamicState: JSON.stringify(input.dynamicState ?? {}),
         activationConditions: JSON.stringify(input.activationConditions ?? []),
+        schedule: input.schedule ? JSON.stringify(input.schedule) : null,
         createdAt: timestamp,
         updatedAt: timestamp,
       });
       return this.getEntry(id);
     },
 
+    async updateEntry(id: string, input: UpdateLorebookEntryInput) {
+      const updates: Record<string, unknown> = { updatedAt: now() };
+      if (input.name !== undefined) updates.name = input.name;
+      if (input.content !== undefined) updates.content = input.content;
+      if (input.keys !== undefined) updates.keys = JSON.stringify(input.keys);
+      if (input.secondaryKeys !== undefined) updates.secondaryKeys = JSON.stringify(input.secondaryKeys);
+      if (input.enabled !== undefined) updates.enabled = String(input.enabled);
+      if (input.constant !== undefined) updates.constant = String(input.constant);
+      if (input.selective !== undefined) updates.selective = String(input.selective);
+      if (input.selectiveLogic !== undefined) updates.selectiveLogic = input.selectiveLogic;
+      if (input.probability !== undefined) updates.probability = input.probability;
+      if (input.scanDepth !== undefined) updates.scanDepth = input.scanDepth;
+      if (input.matchWholeWords !== undefined) updates.matchWholeWords = String(input.matchWholeWords);
+      if (input.caseSensitive !== undefined) updates.caseSensitive = String(input.caseSensitive);
+      if (input.useRegex !== undefined) updates.useRegex = String(input.useRegex);
+      if (input.position !== undefined) updates.position = input.position;
+      if (input.depth !== undefined) updates.depth = input.depth;
+      if (input.order !== undefined) updates.order = input.order;
+      if (input.role !== undefined) updates.role = input.role;
+      if (input.sticky !== undefined) updates.sticky = input.sticky;
+      if (input.cooldown !== undefined) updates.cooldown = input.cooldown;
+      if (input.delay !== undefined) updates.delay = input.delay;
+      if (input.group !== undefined) updates.group = input.group;
+      if (input.groupWeight !== undefined) updates.groupWeight = input.groupWeight;
+      if (input.tag !== undefined) updates.tag = input.tag;
+      if (input.relationships !== undefined) updates.relationships = JSON.stringify(input.relationships);
+      if (input.dynamicState !== undefined) updates.dynamicState = JSON.stringify(input.dynamicState);
+      if (input.activationConditions !== undefined) updates.activationConditions = JSON.stringify(input.activationConditions);
+      if (input.schedule !== undefined) updates.schedule = input.schedule ? JSON.stringify(input.schedule) : null;
+
+      await db.update(lorebookEntries).set(updates).where(eq(lorebookEntries.id, id));
+      return this.getEntry(id);
+    },
+
+    /** Bulk create entries (for imports and AI generation). */
+    async bulkCreateEntries(lorebookId: string, entries: Omit<CreateLorebookEntryInput, "lorebookId">[]) {
+      const results = [];
+      for (const entry of entries) {
+        const result = await this.createEntry({ ...entry, lorebookId });
+        results.push(result);
+      }
+      return results;
+    },
+
     async removeEntry(id: string) {
       await db.delete(lorebookEntries).where(eq(lorebookEntries.id, id));
+    },
+
+    /** Search entries by keyword match in name/content/keys. */
+    async searchEntries(query: string) {
+      const pattern = `%${query}%`;
+      const rows = await db
+        .select()
+        .from(lorebookEntries)
+        .where(
+          like(lorebookEntries.name, pattern),
+        )
+        .orderBy(lorebookEntries.order);
+      return rows.map((r) => parseEntryRow(r as Record<string, unknown>));
     },
   };
 }

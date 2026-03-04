@@ -1,15 +1,35 @@
 // ──────────────────────────────────────────────
-// Routes: Prompts
+// Routes: Prompts (Presets, Groups, Sections, Choices)
 // ──────────────────────────────────────────────
 import type { FastifyInstance } from "fastify";
-import { createPromptPresetSchema, createPromptSectionSchema } from "@rpg-engine/shared";
+import {
+  createPromptPresetSchema,
+  updatePromptPresetSchema,
+  createPromptSectionSchema,
+  updatePromptSectionSchema,
+  createPromptGroupSchema,
+  updatePromptGroupSchema,
+  createChoiceBlockSchema,
+  updateChoiceBlockSchema,
+} from "@rpg-engine/shared";
 import { createPromptsStorage } from "../services/storage/prompts.storage.js";
+import { assemblePrompt, type AssemblerInput } from "../services/prompt/index.js";
+import { createChatsStorage } from "../services/storage/chats.storage.js";
+import { createCharactersStorage } from "../services/storage/characters.storage.js";
 
 export async function promptsRoutes(app: FastifyInstance) {
   const storage = createPromptsStorage(app.db);
 
+  // ═══════════════════════════════════════════
+  //  Presets
+  // ═══════════════════════════════════════════
+
   app.get("/", async () => {
     return storage.list();
+  });
+
+  app.get("/default", async () => {
+    return storage.getDefault();
   });
 
   app.get<{ Params: { id: string } }>("/:id", async (req, reply) => {
@@ -18,13 +38,26 @@ export async function promptsRoutes(app: FastifyInstance) {
     return preset;
   });
 
+  /** Get a full preset with all its sections, groups, and choice blocks. */
+  app.get<{ Params: { id: string } }>("/:id/full", async (req, reply) => {
+    const preset = await storage.getById(req.params.id);
+    if (!preset) return reply.status(404).send({ error: "Preset not found" });
+    const [sections, groups, choiceBlocks] = await Promise.all([
+      storage.listSections(req.params.id),
+      storage.listGroups(req.params.id),
+      storage.listChoiceBlocksForPreset(req.params.id),
+    ]);
+    return { preset, sections, groups, choiceBlocks };
+  });
+
   app.post("/", async (req) => {
     const input = createPromptPresetSchema.parse(req.body);
     return storage.create(input);
   });
 
   app.patch<{ Params: { id: string } }>("/:id", async (req) => {
-    return storage.update(req.params.id, req.body as Record<string, unknown>);
+    const input = updatePromptPresetSchema.parse(req.body);
+    return storage.update(req.params.id, input);
   });
 
   app.delete<{ Params: { id: string } }>("/:id", async (req, reply) => {
@@ -32,7 +65,53 @@ export async function promptsRoutes(app: FastifyInstance) {
     return reply.status(204).send();
   });
 
-  // ── Sections ──
+  app.post<{ Params: { id: string } }>("/:id/duplicate", async (req, reply) => {
+    const result = await storage.duplicate(req.params.id);
+    if (!result) return reply.status(404).send({ error: "Preset not found" });
+    return result;
+  });
+
+  // ═══════════════════════════════════════════
+  //  Groups
+  // ═══════════════════════════════════════════
+
+  app.get<{ Params: { id: string } }>("/:id/groups", async (req) => {
+    return storage.listGroups(req.params.id);
+  });
+
+  app.post<{ Params: { id: string } }>("/:id/groups", async (req) => {
+    const input = createPromptGroupSchema.parse({
+      ...(req.body as Record<string, unknown>),
+      presetId: req.params.id,
+    });
+    return storage.createGroup(input);
+  });
+
+  app.patch<{ Params: { presetId: string; groupId: string } }>(
+    "/:presetId/groups/:groupId",
+    async (req) => {
+      const input = updatePromptGroupSchema.parse(req.body);
+      return storage.updateGroup(req.params.groupId, input);
+    },
+  );
+
+  app.delete<{ Params: { presetId: string; groupId: string } }>(
+    "/:presetId/groups/:groupId",
+    async (req, reply) => {
+      await storage.removeGroup(req.params.groupId);
+      return reply.status(204).send();
+    },
+  );
+
+  app.put<{ Params: { id: string } }>("/:id/groups/reorder", async (req) => {
+    const { groupIds } = req.body as { groupIds: string[] };
+    await storage.reorderGroups(req.params.id, groupIds);
+    return { success: true };
+  });
+
+  // ═══════════════════════════════════════════
+  //  Sections
+  // ═══════════════════════════════════════════
 
   app.get<{ Params: { id: string } }>("/:id/sections", async (req) => {
     return storage.listSections(req.params.id);
@@ -49,7 +128,8 @@ export async function promptsRoutes(app: FastifyInstance) {
   app.patch<{ Params: { presetId: string; sectionId: string } }>(
     "/:presetId/sections/:sectionId",
     async (req) => {
-      return storage.updateSection(req.params.sectionId, req.body as Record<string, unknown>);
+      const input = updatePromptSectionSchema.parse(req.body);
+      return storage.updateSection(req.params.sectionId, input);
     },
   );
 
@@ -60,4 +140,120 @@ export async function promptsRoutes(app: FastifyInstance) {
       return reply.status(204).send();
     },
   );
+
+  app.put<{ Params: { id: string } }>("/:id/sections/reorder", async (req) => {
+    const { sectionIds } = req.body as { sectionIds: string[] };
+    await storage.reorderSections(req.params.id, sectionIds);
+    return { success: true };
+  });
+
+  // ═══════════════════════════════════════════
+  //  Choice Blocks
+  // ═══════════════════════════════════════════
+
+  app.get<{ Params: { presetId: string; sectionId: string } }>(
+    "/:presetId/sections/:sectionId/choice",
+    async (req) => {
+      return storage.getChoiceBlock(req.params.sectionId);
+    },
+  );
+
+  app.post<{ Params: { presetId: string; sectionId: string } }>(
+    "/:presetId/sections/:sectionId/choice",
+    async (req) => {
+      const input = createChoiceBlockSchema.parse({
+        ...(req.body as Record<string, unknown>),
+        sectionId: req.params.sectionId,
+      });
+      return storage.createChoiceBlock(input);
+    },
+  );
+
+  app.patch<{ Params: { presetId: string; sectionId: string; choiceId: string } }>(
+    "/:presetId/sections/:sectionId/choice/:choiceId",
+    async (req) => {
+      const input = updateChoiceBlockSchema.parse(req.body);
+      return storage.updateChoiceBlock(req.params.choiceId, input);
+    },
+  );
+
+  app.delete<{ Params: { presetId: string; sectionId: string; choiceId: string } }>(
+    "/:presetId/sections/:sectionId/choice/:choiceId",
+    async (req, reply) => {
+      await storage.removeChoiceBlock(req.params.choiceId);
+      return reply.status(204).send();
+    },
+  );
+
+  // ═══════════════════════════════════════════
+  //  Prompt Preview (Assembled)
+  // ═══════════════════════════════════════════
+
+  /**
+   * POST /:id/preview — Preview the assembled prompt for a given chat.
+   * Body: { chatId: string, choices?: Record<string, string> }
+   */
+  app.post<{ Params: { id: string } }>("/:id/preview", async (req, reply) => {
+    const { chatId, choices } = req.body as { chatId: string; choices?: Record<string, string> };
+    const preset = await storage.getById(req.params.id);
+    if (!preset) return reply.status(404).send({ error: "Preset not found" });
+
+    const chats = createChatsStorage(app.db);
+    const chat = await chats.getById(chatId);
+    if (!chat) return reply.status(404).send({ error: "Chat not found" });
+
+    const characterIds: string[] = JSON.parse(chat.characterIds as string);
+    const chatMessages = await chats.listMessages(chatId);
+    const mappedMessages = chatMessages.map((m: any) => ({
+      role: m.role === "narrator" ? ("system" as const) : (m.role as "user" | "assistant" | "system"),
+      content: m.content as string,
+    }));
+
+    // Resolve persona
+    const charStorage = createCharactersStorage(app.db);
+    let personaName = "User";
+    let personaDescription = "";
+    let personaFields: { personality?: string; scenario?: string; backstory?: string; appearance?: string } = {};
+    // Get active persona
+    const allPersonas = await charStorage.listPersonas();
+    const activePersona = allPersonas.find((p: any) => p.isActive === "true");
+    if (activePersona) {
+      personaName = activePersona.name;
+      personaDescription = activePersona.description;
+      personaFields = {
+        personality: activePersona.personality ?? "",
+        scenario: activePersona.scenario ?? "",
+        backstory: activePersona.backstory ?? "",
+        appearance: activePersona.appearance ?? "",
+      };
+    }
+
+    const [sections, groups, choiceBlocks] = await Promise.all([
+      storage.listSections(req.params.id),
+      storage.listGroups(req.params.id),
+      storage.listChoiceBlocksForPreset(req.params.id),
+    ]);
+
+    const assemblerInput: AssemblerInput = {
+      db: app.db,
+      preset: preset as any,
+      sections: sections as any,
+      groups: groups as any,
+      choiceBlocks: choiceBlocks as any,
+      chatChoices: choices ?? {},
+      chatId,
+      characterIds,
+      personaName,
+      personaDescription,
+      personaFields,
+      chatMessages: mappedMessages,
+    };
+
+    const result = await assemblePrompt(assemblerInput);
+    return {
+      messages: result.messages,
+      parameters: result.parameters,
+      messageCount: result.messages.length,
+    };
+  });
 }

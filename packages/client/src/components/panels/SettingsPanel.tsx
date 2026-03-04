@@ -1,17 +1,21 @@
 // ──────────────────────────────────────────────
 // Panel: Settings (polished)
 // ──────────────────────────────────────────────
-import { useUIStore } from "../../stores/ui.store";
+import { useUIStore, type CustomTheme, type InstalledExtension, type VisualTheme } from "../../stores/ui.store";
 import { cn } from "../../lib/utils";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../lib/api-client";
 import { useRef, useState } from "react";
-import { Upload, X, Image, Trash2, Check, Loader2 } from "lucide-react";
+import { Upload, X, Image, Trash2, Check, Loader2, Palette, Puzzle, CloudRain, FileCode2, Power, PowerOff, Paintbrush, AlertTriangle } from "lucide-react";
+import { useClearAllData } from "../../hooks/use-chats";
+import { HelpTooltip } from "../ui/HelpTooltip";
 
 const TABS = [
   { id: "general", label: "General" },
   { id: "appearance", label: "Appearance" },
-  { id: "import", label: "Import/Export" },
+  { id: "themes", label: "Themes" },
+  { id: "extensions", label: "Extensions" },
+  { id: "import", label: "Import" },
   { id: "advanced", label: "Advanced" },
 ] as const;
 
@@ -22,13 +26,13 @@ export function SettingsPanel() {
   return (
     <div className="flex flex-col">
       {/* Tab bar */}
-      <div className="flex border-b border-[var(--sidebar-border)]">
+      <div className="flex flex-wrap border-b border-[var(--sidebar-border)]">
         {TABS.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setSettingsTab(tab.id)}
             className={cn(
-              "relative flex-1 py-2.5 text-xs font-medium transition-colors",
+              "relative px-3 py-2.5 text-xs font-medium transition-colors",
               settingsTab === tab.id
                 ? "text-[var(--foreground)]"
                 : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]",
@@ -36,7 +40,7 @@ export function SettingsPanel() {
           >
             {tab.label}
             {settingsTab === tab.id && (
-              <span className="absolute inset-x-2 bottom-0 h-0.5 rounded-full bg-[var(--primary)]" />
+              <span className="absolute inset-x-1 bottom-0 h-0.5 rounded-full bg-[var(--primary)]" />
             )}
           </button>
         ))}
@@ -45,6 +49,8 @@ export function SettingsPanel() {
       <div className="p-3">
         {settingsTab === "general" && <GeneralSettings />}
         {settingsTab === "appearance" && <AppearanceSettings />}
+        {settingsTab === "themes" && <ThemesSettings />}
+        {settingsTab === "extensions" && <ExtensionsSettings />}
         {settingsTab === "import" && <ImportSettings />}
         {settingsTab === "advanced" && <AdvancedSettings />}
       </div>
@@ -53,6 +59,11 @@ export function SettingsPanel() {
 }
 
 function GeneralSettings() {
+  const defaultUserName = useUIStore((s) => s.defaultUserName);
+  const setDefaultUserName = useUIStore((s) => s.setDefaultUserName);
+  const defaultChatMode = useUIStore((s) => s.defaultChatMode);
+  const setDefaultChatMode = useUIStore((s) => s.setDefaultChatMode);
+
   return (
     <div className="flex flex-col gap-3 animate-fade-in-up">
       <div className="text-xs text-[var(--muted-foreground)]">
@@ -60,19 +71,23 @@ function GeneralSettings() {
       </div>
 
       <label className="flex flex-col gap-1">
-        <span className="text-xs font-medium">Default User Name</span>
+        <span className="text-xs font-medium inline-flex items-center gap-1">Default User Name <HelpTooltip text="The name displayed for your messages in chat. Characters will use this name when referring to you." /></span>
         <input
-          defaultValue="User"
+          value={defaultUserName}
+          onChange={(e) => setDefaultUserName(e.target.value)}
           className="rounded-lg bg-[var(--secondary)] px-3 py-2 text-xs outline-none ring-1 ring-transparent transition-shadow focus:ring-[var(--primary)]"
         />
       </label>
 
       <label className="flex flex-col gap-1">
-        <span className="text-xs font-medium">Default Chat Mode</span>
-        <select className="rounded-lg bg-[var(--secondary)] px-3 py-2 text-xs outline-none ring-1 ring-transparent transition-shadow focus:ring-[var(--primary)]">
+        <span className="text-xs font-medium inline-flex items-center gap-1">Default Chat Mode <HelpTooltip text="Conversation mode is casual back-and-forth. Roleplay mode enables narrative features like character personas, world state tracking, and weather effects." /></span>
+        <select
+          value={defaultChatMode}
+          onChange={(e) => setDefaultChatMode(e.target.value as "conversation" | "roleplay")}
+          className="rounded-lg bg-[var(--secondary)] px-3 py-2 text-xs outline-none ring-1 ring-transparent transition-shadow focus:ring-[var(--primary)]"
+        >
           <option value="conversation">Conversation</option>
           <option value="roleplay">Roleplay</option>
-          <option value="visual_novel">Visual Novel</option>
         </select>
       </label>
     </div>
@@ -82,13 +97,48 @@ function GeneralSettings() {
 function AppearanceSettings() {
   const theme = useUIStore((s) => s.theme);
   const setTheme = useUIStore((s) => s.setTheme);
+  const visualTheme = useUIStore((s) => s.visualTheme);
+  const setVisualTheme = useUIStore((s) => s.setVisualTheme);
   const chatBackground = useUIStore((s) => s.chatBackground);
   const setChatBackground = useUIStore((s) => s.setChatBackground);
+  const fontSize = useUIStore((s) => s.fontSize);
+  const setFontSize = useUIStore((s) => s.setFontSize);
+  const weatherEffects = useUIStore((s) => s.weatherEffects);
+  const setWeatherEffects = useUIStore((s) => s.setWeatherEffects);
 
   return (
     <div className="flex flex-col gap-4 animate-fade-in-up">
+      {/* ── Visual Style ── */}
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center gap-1.5">
+          <Paintbrush size={12} className="text-[var(--muted-foreground)]" />
+          <span className="text-xs font-medium">Visual Style</span>
+          <HelpTooltip text="Choose how the entire app looks. 'Marinara' uses a retro Y2K aesthetic with glow effects. 'SillyTavern' uses a clean, minimal look inspired by the original SillyTavern." />
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          {([
+            { id: "default" as VisualTheme, label: "Default (Marinara)", desc: "Y2K / retro aesthetic with glow effects" },
+            { id: "sillytavern" as VisualTheme, label: "SillyTavern", desc: "Classic SillyTavern look — clean & minimal" },
+          ] as const).map((opt) => (
+            <button
+              key={opt.id}
+              onClick={() => setVisualTheme(opt.id)}
+              className={cn(
+                "flex flex-col items-start gap-1 rounded-lg border p-3 text-left text-xs transition-all",
+                visualTheme === opt.id
+                  ? "border-[var(--primary)] bg-[var(--primary)]/10 ring-1 ring-[var(--primary)]"
+                  : "border-[var(--border)] hover:border-[var(--primary)]/40",
+              )}
+            >
+              <span className="font-semibold">{opt.label}</span>
+              <span className="text-[10px] text-[var(--muted-foreground)] leading-tight">{opt.desc}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
       <label className="flex flex-col gap-1">
-        <span className="text-xs font-medium">Theme</span>
+        <span className="text-xs font-medium inline-flex items-center gap-1">Color Scheme <HelpTooltip text="Switch between dark and light mode. Dark mode is easier on the eyes in low-light environments." /></span>
         <select
           value={theme}
           onChange={(e) => setTheme(e.target.value as "dark" | "light")}
@@ -100,22 +150,40 @@ function AppearanceSettings() {
       </label>
 
       <label className="flex flex-col gap-1">
-        <span className="text-xs font-medium">Font Size</span>
+        <span className="text-xs font-medium inline-flex items-center gap-1">Display Size <HelpTooltip text="Adjusts the base font size across the whole app. Larger sizes improve readability. Default is 14px." /></span>
         <select
-          defaultValue="14"
+          value={String(fontSize)}
+          onChange={(e) => setFontSize(Number(e.target.value) as 12 | 14 | 16 | 17)}
           className="rounded-lg bg-[var(--secondary)] px-3 py-2 text-xs outline-none ring-1 ring-transparent transition-shadow focus:ring-[var(--primary)]"
         >
-          <option value="12">Small (12px)</option>
-          <option value="14">Default (14px)</option>
-          <option value="16">Large (16px)</option>
-          <option value="18">Extra Large (18px)</option>
+          <option value="12">Small</option>
+          <option value="14">Default</option>
+          <option value="16">Large</option>
+          <option value="17">Extra Large</option>
         </select>
       </label>
+
+      {/* ── Effects ── */}
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center gap-1.5">
+          <CloudRain size={12} className="text-[var(--muted-foreground)]" />
+          <span className="text-xs font-medium">Effects</span>
+          <HelpTooltip text="Visual effects that enhance the roleplay atmosphere. Weather particles like rain, snow, and fog appear based on the story context." />
+        </div>
+        <ToggleSetting
+          label="Dynamic weather effects (rain, snow, fog, etc.)"
+          checked={weatherEffects}
+          onChange={setWeatherEffects}
+        />
+        <p className="text-[10px] text-[var(--muted-foreground)] pl-6">
+          Shows animated weather particles in roleplay mode based on in-story weather and time of day.
+        </p>
+      </div>
 
       {/* ── Chat Background Picker ── */}
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-medium">Chat Background</span>
+          <span className="text-xs font-medium inline-flex items-center gap-1">Chat Background <HelpTooltip text="Upload a custom image to use as the background of the chat area. Supports JPG, PNG, and WebP. Remove to use the default background." /></span>
           {chatBackground && (
             <button
               onClick={() => setChatBackground(null)}
@@ -240,12 +308,268 @@ function BackgroundPicker({ selected, onSelect }: { selected: string | null; onS
   );
 }
 
+function ThemesSettings() {
+  const customThemes = useUIStore((s) => s.customThemes);
+  const activeCustomTheme = useUIStore((s) => s.activeCustomTheme);
+  const setActiveCustomTheme = useUIStore((s) => s.setActiveCustomTheme);
+  const addCustomTheme = useUIStore((s) => s.addCustomTheme);
+  const removeCustomTheme = useUIStore((s) => s.removeCustomTheme);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const handleImportTheme = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+
+      // Check if it's a JSON theme definition
+      if (file.name.endsWith(".json")) {
+        const parsed = JSON.parse(text);
+        const theme: CustomTheme = {
+          id: crypto.randomUUID(),
+          name: parsed.name ?? file.name.replace(/\.json$/, ""),
+          css: parsed.css ?? "",
+          installedAt: new Date().toISOString(),
+        };
+        addCustomTheme(theme);
+      } else {
+        // Treat as raw CSS file
+        const theme: CustomTheme = {
+          id: crypto.randomUUID(),
+          name: file.name.replace(/\.css$/, ""),
+          css: text,
+          installedAt: new Date().toISOString(),
+        };
+        addCustomTheme(theme);
+      }
+    } catch {
+      alert("Failed to import theme. Ensure it's a valid CSS or JSON file.");
+    }
+    e.target.value = "";
+  };
+
+  return (
+    <div className="flex flex-col gap-4 animate-fade-in-up">
+      <div className="flex items-center gap-1.5 text-xs text-[var(--muted-foreground)]">
+        <Palette size={12} />
+        Import custom CSS themes to personalize the look and feel.
+      </div>
+
+      {/* Import button */}
+      <button
+        onClick={() => fileRef.current?.click()}
+        className="flex items-center justify-center gap-1.5 rounded-lg border-2 border-dashed border-[var(--border)] p-3 text-xs text-[var(--muted-foreground)] transition-all hover:border-[var(--primary)]/40 hover:bg-[var(--secondary)]/50"
+      >
+        <Upload size={14} /> Import Theme (.css or .json)
+      </button>
+      <input ref={fileRef} type="file" accept=".css,.json" className="hidden" onChange={handleImportTheme} />
+
+      {/* Active theme: None option */}
+      <div className="flex flex-col gap-1.5">
+        <span className="text-xs font-medium">Installed Themes</span>
+        <button
+          onClick={() => setActiveCustomTheme(null)}
+          className={cn(
+            "flex items-center gap-2 rounded-lg px-3 py-2 text-xs transition-all",
+            activeCustomTheme === null
+              ? "bg-[var(--primary)]/15 text-[var(--primary)] ring-1 ring-[var(--primary)]/30"
+              : "bg-[var(--secondary)] text-[var(--muted-foreground)] hover:bg-[var(--accent)]",
+          )}
+        >
+          <Palette size={12} />
+          Default Theme
+          {activeCustomTheme === null && <Check size={12} className="ml-auto" />}
+        </button>
+
+        {/* Custom theme list */}
+        {customThemes.map((t) => (
+          <div
+            key={t.id}
+            className={cn(
+              "flex items-center gap-2 rounded-lg px-3 py-2 text-xs transition-all",
+              activeCustomTheme === t.id
+                ? "bg-[var(--primary)]/15 text-[var(--primary)] ring-1 ring-[var(--primary)]/30"
+                : "bg-[var(--secondary)] text-[var(--secondary-foreground)] hover:bg-[var(--accent)]",
+            )}
+          >
+            <button onClick={() => setActiveCustomTheme(t.id)} className="flex flex-1 items-center gap-2">
+              <FileCode2 size={12} />
+              <span className="truncate">{t.name}</span>
+              {activeCustomTheme === t.id && <Check size={12} />}
+            </button>
+            <button
+              onClick={() => {
+                if (activeCustomTheme === t.id) setActiveCustomTheme(null);
+                removeCustomTheme(t.id);
+              }}
+              className="rounded p-0.5 text-[var(--muted-foreground)] transition-colors hover:bg-[var(--destructive)]/10 hover:text-[var(--destructive)]"
+              title="Remove theme"
+            >
+              <Trash2 size={11} />
+            </button>
+          </div>
+        ))}
+
+        {customThemes.length === 0 && (
+          <p className="py-2 text-center text-[10px] text-[var(--muted-foreground)]">
+            No custom themes installed yet. Import a .css or .json theme file above.
+          </p>
+        )}
+      </div>
+
+      {/* Info box */}
+      <div className="rounded-lg bg-[var(--secondary)]/50 p-2.5 text-[10px] text-[var(--muted-foreground)] ring-1 ring-[var(--border)]">
+        <strong>Tip:</strong> CSS themes can override any CSS variable (e.g.{" "}
+        <code className="rounded bg-[var(--secondary)] px-1">--background</code>,{" "}
+        <code className="rounded bg-[var(--secondary)] px-1">--primary</code>) or add custom styles.
+        JSON themes should have <code className="rounded bg-[var(--secondary)] px-1">{`{ "name": "...", "css": "..." }`}</code> format.
+      </div>
+    </div>
+  );
+}
+
+function ExtensionsSettings() {
+  const extensions = useUIStore((s) => s.installedExtensions);
+  const addExtension = useUIStore((s) => s.addExtension);
+  const removeExtension = useUIStore((s) => s.removeExtension);
+  const toggleExtension = useUIStore((s) => s.toggleExtension);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const handleImportExtension = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+
+      if (file.name.endsWith(".json")) {
+        const parsed = JSON.parse(text);
+        const ext: InstalledExtension = {
+          id: crypto.randomUUID(),
+          name: parsed.name ?? file.name.replace(/\.json$/, ""),
+          description: parsed.description ?? "",
+          css: parsed.css ?? undefined,
+          enabled: true,
+          installedAt: new Date().toISOString(),
+        };
+        addExtension(ext);
+      } else if (file.name.endsWith(".css")) {
+        const ext: InstalledExtension = {
+          id: crypto.randomUUID(),
+          name: file.name.replace(/\.css$/, ""),
+          description: "CSS extension imported from file",
+          css: text,
+          enabled: true,
+          installedAt: new Date().toISOString(),
+        };
+        addExtension(ext);
+      } else {
+        alert("Only .json and .css extension files are supported.");
+      }
+    } catch {
+      alert("Failed to import extension.");
+    }
+    e.target.value = "";
+  };
+
+  return (
+    <div className="flex flex-col gap-4 animate-fade-in-up">
+      <div className="flex items-center gap-1.5 text-xs text-[var(--muted-foreground)]">
+        <Puzzle size={12} />
+        Install custom extensions to add new features and styles.
+      </div>
+
+      {/* Import button */}
+      <button
+        onClick={() => fileRef.current?.click()}
+        className="flex items-center justify-center gap-1.5 rounded-lg border-2 border-dashed border-[var(--border)] p-3 text-xs text-[var(--muted-foreground)] transition-all hover:border-[var(--primary)]/40 hover:bg-[var(--secondary)]/50"
+      >
+        <Upload size={14} /> Import Extension (.json or .css)
+      </button>
+      <input ref={fileRef} type="file" accept=".json,.css" className="hidden" onChange={handleImportExtension} />
+
+      {/* Extension list */}
+      <div className="flex flex-col gap-1.5">
+        <span className="text-xs font-medium">Installed Extensions</span>
+
+        {extensions.map((ext) => (
+          <div
+            key={ext.id}
+            className={cn(
+              "flex items-center gap-2 rounded-lg px-3 py-2 text-xs transition-all",
+              ext.enabled
+                ? "bg-[var(--secondary)] text-[var(--secondary-foreground)]"
+                : "bg-[var(--secondary)]/40 text-[var(--muted-foreground)]",
+            )}
+          >
+            <button
+              onClick={() => toggleExtension(ext.id)}
+              className={cn(
+                "rounded p-0.5 transition-colors",
+                ext.enabled
+                  ? "text-emerald-400 hover:text-emerald-300"
+                  : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]",
+              )}
+              title={ext.enabled ? "Disable extension" : "Enable extension"}
+            >
+              {ext.enabled ? <Power size={12} /> : <PowerOff size={12} />}
+            </button>
+            <div className="flex flex-1 flex-col min-w-0">
+              <span className="truncate font-medium">{ext.name}</span>
+              {ext.description && (
+                <span className="truncate text-[10px] text-[var(--muted-foreground)]">
+                  {ext.description}
+                </span>
+              )}
+            </div>
+            <button
+              onClick={() => removeExtension(ext.id)}
+              className="rounded p-0.5 text-[var(--muted-foreground)] transition-colors hover:bg-[var(--destructive)]/10 hover:text-[var(--destructive)]"
+              title="Remove extension"
+            >
+              <Trash2 size={11} />
+            </button>
+          </div>
+        ))}
+
+        {extensions.length === 0 && (
+          <p className="py-2 text-center text-[10px] text-[var(--muted-foreground)]">
+            No extensions installed. Import a .json or .css extension file above.
+          </p>
+        )}
+      </div>
+
+      {/* Info box */}
+      <div className="rounded-lg bg-[var(--secondary)]/50 p-2.5 text-[10px] text-[var(--muted-foreground)] ring-1 ring-[var(--border)]">
+        <strong>JSON format:</strong>{" "}
+        <code className="rounded bg-[var(--secondary)] px-1">{`{ "name": "...", "description": "...", "css": "..." }`}</code>.
+        Extensions can inject custom CSS to modify the UI.
+      </div>
+    </div>
+  );
+}
+
 function ImportSettings() {
+  const openModal = useUIStore((s) => s.openModal);
+
   return (
     <div className="flex flex-col gap-3 animate-fade-in-up">
       <div className="text-xs text-[var(--muted-foreground)]">
         Import data from SillyTavern or other tools.
       </div>
+
+      {/* Bulk ST import */}
+      <button
+        onClick={() => openModal("st-bulk-import")}
+        className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-violet-500/20 to-purple-500/20 px-3 py-3 text-xs font-semibold ring-1 ring-violet-500/30 transition-all hover:ring-violet-500/50 active:scale-[0.98]"
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Import from SillyTavern Folder
+      </button>
+
+      <div className="retro-divider" />
+
+      {/* Individual file imports */}
+      <span className="text-[10px] font-medium uppercase tracking-wider text-[var(--muted-foreground)]">Or import individual files</span>
 
       <div className="flex flex-col gap-2">
         <ImportButton label="Import Character (JSON/PNG)" accept=".json,.png" endpoint="/import/character" />
@@ -289,28 +613,104 @@ function ImportButton({ label, accept, endpoint }: { label: string; accept: stri
 }
 
 function AdvancedSettings() {
+  const enableStreaming = useUIStore((s) => s.enableStreaming);
+  const setEnableStreaming = useUIStore((s) => s.setEnableStreaming);
+  const autoSaveChats = useUIStore((s) => s.autoSaveChats);
+  const setAutoSaveChats = useUIStore((s) => s.setAutoSaveChats);
+  const debugMode = useUIStore((s) => s.debugMode);
+  const setDebugMode = useUIStore((s) => s.setDebugMode);
+  const messageGrouping = useUIStore((s) => s.messageGrouping);
+  const setMessageGrouping = useUIStore((s) => s.setMessageGrouping);
+  const showTimestamps = useUIStore((s) => s.showTimestamps);
+  const setShowTimestamps = useUIStore((s) => s.setShowTimestamps);
+  const confirmBeforeDelete = useUIStore((s) => s.confirmBeforeDelete);
+  const setConfirmBeforeDelete = useUIStore((s) => s.setConfirmBeforeDelete);
+  const clearAllData = useClearAllData();
+  const [confirmStep, setConfirmStep] = useState(0); // 0=idle, 1=first click, 2=confirmed
+
   return (
     <div className="flex flex-col gap-3 animate-fade-in-up">
       <div className="text-xs text-[var(--muted-foreground)]">
         Advanced settings for power users.
       </div>
 
-      <ToggleSetting label="Enable streaming responses" defaultChecked />
-      <ToggleSetting label="Auto-save chat history" defaultChecked />
-      <ToggleSetting label="Debug mode (log prompts to console)" />
+      <ToggleSetting label="Enable streaming responses" checked={enableStreaming} onChange={setEnableStreaming} help="When on, AI responses appear word-by-word as they're generated. When off, the full response appears at once after completion." />
+      <ToggleSetting label="Auto-save chat history" checked={autoSaveChats} onChange={setAutoSaveChats} help="Automatically saves your chats so you don't lose progress. Disable if you prefer to save manually." />
+      <ToggleSetting label="Group consecutive messages" checked={messageGrouping} onChange={setMessageGrouping} help="Combines multiple messages from the same sender into a visual group, reducing clutter in the chat." />
+      <ToggleSetting label="Show message timestamps" checked={showTimestamps} onChange={setShowTimestamps} help="Displays the date and time each message was sent next to it in the chat." />
+      <ToggleSetting label="Confirm before deleting" checked={confirmBeforeDelete} onChange={setConfirmBeforeDelete} help="Shows a confirmation dialog before permanently deleting chats, characters, or other items. Recommended to keep on." />
+      <ToggleSetting label="Debug mode (log prompts to console)" checked={debugMode} onChange={setDebugMode} help="Logs the full prompt and API request/response to the browser console. Useful for advanced users debugging prompt formatting." />
+
+      {/* ── Danger Zone ── */}
+      <div className="retro-divider" />
+      <div className="rounded-xl border border-[var(--destructive)]/30 bg-[var(--destructive)]/5 p-3 flex flex-col gap-2">
+        <div className="flex items-center gap-2 text-xs font-semibold text-[var(--destructive)]">
+          <AlertTriangle size={14} />
+          Danger Zone
+        </div>
+        <p className="text-[10px] text-[var(--muted-foreground)]">
+          This will permanently delete <strong>all</strong> characters, chats, messages, presets, lorebooks,
+          backgrounds, sprites, personas, and connections. This action cannot be undone.
+        </p>
+        {confirmStep === 0 && (
+          <button
+            onClick={() => setConfirmStep(1)}
+            className="flex items-center justify-center gap-1.5 rounded-lg bg-[var(--destructive)] px-3 py-2 text-xs font-medium text-white transition-all hover:opacity-90 active:scale-95"
+          >
+            <Trash2 size={13} />
+            Clear All Data
+          </button>
+        )}
+        {confirmStep === 1 && (
+          <div className="flex flex-col gap-2">
+            <div className="flex items-start gap-2 rounded-lg bg-[var(--destructive)]/15 p-2.5 text-[11px] text-[var(--destructive)] font-medium">
+              <AlertTriangle size={14} className="mt-0.5 shrink-0" />
+              Are you sure? This will erase everything. There is no undo.
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setConfirmStep(0)}
+                className="flex-1 rounded-lg border border-[var(--border)] px-3 py-2 text-xs font-medium transition-all hover:bg-[var(--secondary)] active:scale-95"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  setConfirmStep(2);
+                  clearAllData.mutate(undefined, {
+                    onSettled: () => setConfirmStep(0),
+                  });
+                }}
+                className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-[var(--destructive)] px-3 py-2 text-xs font-medium text-white transition-all hover:opacity-90 active:scale-95"
+              >
+                <Trash2 size={12} />
+                Yes, Delete Everything
+              </button>
+            </div>
+          </div>
+        )}
+        {confirmStep === 2 && (
+          <div className="flex items-center justify-center gap-2 py-2 text-xs text-[var(--muted-foreground)]">
+            <Loader2 size={14} className="animate-spin" />
+            Clearing all data…
+          </div>
+        )}
+      </div>
     </div>
   );
 }
 
-function ToggleSetting({ label, defaultChecked }: { label: string; defaultChecked?: boolean }) {
+function ToggleSetting({ label, checked, onChange, help }: { label: string; checked: boolean; onChange: (v: boolean) => void; help?: string }) {
   return (
     <label className="flex items-center gap-2.5 rounded-lg p-1 transition-colors hover:bg-[var(--secondary)]/50">
       <input
         type="checkbox"
-        defaultChecked={defaultChecked}
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
         className="h-3.5 w-3.5 rounded border-[var(--border)] accent-[var(--primary)]"
       />
       <span className="text-xs">{label}</span>
+      {help && <span onClick={(e) => e.preventDefault()}><HelpTooltip text={help} /></span>}
     </label>
   );
 }

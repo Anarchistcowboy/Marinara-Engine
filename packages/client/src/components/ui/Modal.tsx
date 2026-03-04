@@ -61,14 +61,7 @@ export function Modal({ open, onClose, title, children, width = "max-w-md" }: Mo
             <div className="pastel-gradient h-[3px]" />
             {/* Header */}
             <div className="flex items-center justify-between border-b border-[var(--y2k-purple)]/20 px-5 py-3.5">
-              <div className="flex items-center gap-3">
-                <div className="os-window-buttons">
-                  <div className="os-window-btn close" onClick={onClose} />
-                  <div className="os-window-btn minimize" />
-                  <div className="os-window-btn maximize" />
-                </div>
-                <h2 className="text-sm font-semibold text-[var(--y2k-lavender)]">{title}</h2>
-              </div>
+              <h2 className="text-sm font-semibold text-[var(--y2k-lavender)]">{title}</h2>
               <button
                 onClick={onClose}
                 className="rounded-lg p-1 text-[var(--muted-foreground)] transition-colors hover:bg-[var(--accent)] hover:text-[var(--y2k-pink)]"

@@ -16,6 +16,7 @@ export const createConnectionSchema = z.object({
   model: z.string().default(""),
   maxContext: z.number().int().min(1).default(128000),
   isDefault: z.boolean().default(false),
+  useForRandom: z.boolean().default(false),
 });
 
 export type CreateConnectionInput = z.infer<typeof createConnectionSchema>;

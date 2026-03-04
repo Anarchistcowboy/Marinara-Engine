@@ -15,6 +15,8 @@ export const apiConnections = sqliteTable("api_connections", {
   model: text("model").notNull().default(""),
   maxContext: integer("max_context").notNull().default(128000),
   isDefault: text("is_default").notNull().default("false"),
+  /** Whether this connection is part of the random-selection pool */
+  useForRandom: text("use_for_random").notNull().default("false"),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
 });

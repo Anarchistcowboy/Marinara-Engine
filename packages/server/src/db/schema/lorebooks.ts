@@ -7,9 +7,15 @@ export const lorebooks = sqliteTable("lorebooks", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
   description: text("description").notNull().default(""),
+  category: text("category").notNull().default("uncategorized"),
   scanDepth: integer("scan_depth").notNull().default(2),
   tokenBudget: integer("token_budget").notNull().default(2048),
   recursiveScanning: text("recursive_scanning").notNull().default("false"),
+  characterId: text("character_id"),
+  chatId: text("chat_id"),
+  enabled: text("enabled").notNull().default("true"),
+  generatedBy: text("generated_by"),
+  sourceAgentId: text("source_agent_id"),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
 });
@@ -32,6 +38,7 @@ export const lorebookEntries = sqliteTable("lorebook_entries", {
   scanDepth: integer("scan_depth"),
   matchWholeWords: text("match_whole_words").notNull().default("false"),
   caseSensitive: text("case_sensitive").notNull().default("false"),
+  useRegex: text("use_regex").notNull().default("false"),
 
   position: integer("position").notNull().default(0),
   depth: integer("depth").notNull().default(4),
@@ -45,13 +52,15 @@ export const lorebookEntries = sqliteTable("lorebook_entries", {
   groupWeight: integer("group_weight"),
 
   // Engine extensions
-  category: text("category").notNull().default("uncategorized"),
+  tag: text("tag").notNull().default(""),
   /** JSON object { entryId: relationshipType } */
   relationships: text("relationships").notNull().default("{}"),
   /** JSON object for dynamic state */
   dynamicState: text("dynamic_state").notNull().default("{}"),
   /** JSON array of activation conditions */
   activationConditions: text("activation_conditions").notNull().default("[]"),
+  /** JSON schedule object or null */
+  schedule: text("schedule"),
 
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),

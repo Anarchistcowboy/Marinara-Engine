@@ -1,9 +1,11 @@
 // ──────────────────────────────────────────────
-// Routes: Characters & Personas
+// Routes: Characters, Personas & Groups
 // ──────────────────────────────────────────────
 import type { FastifyInstance } from "fastify";
-import { createCharacterSchema } from "@rpg-engine/shared";
+import { createCharacterSchema, createGroupSchema, updateGroupSchema } from "@rpg-engine/shared";
 import { createCharactersStorage } from "../services/storage/characters.storage.js";
+import { writeFile, mkdir } from "fs/promises";
+import { join } from "path";
 
 export async function charactersRoutes(app: FastifyInstance) {
   const storage = createCharactersStorage(app.db);
@@ -22,17 +24,54 @@ export async function charactersRoutes(app: FastifyInstance) {
 
   app.post("/", async (req) => {
     const input = createCharacterSchema.parse(req.body);
-    return storage.create(input.data);
+    const body = req.body as Record<string, unknown>;
+    const avatarPath = typeof body.avatarPath === "string" ? body.avatarPath : undefined;
+    return storage.create(input.data, avatarPath);
   });
 
   app.patch<{ Params: { id: string } }>("/:id", async (req) => {
+    const body = req.body as Record<string, unknown>;
     const update = createCharacterSchema.partial().parse(req.body);
-    return storage.update(req.params.id, update.data ?? {});
+    const avatarPath = typeof body.avatarPath === "string" ? body.avatarPath : undefined;
+    return storage.update(req.params.id, update.data ?? {}, avatarPath);
   });
 
   app.delete<{ Params: { id: string } }>("/:id", async (req, reply) => {
     await storage.remove(req.params.id);
     return reply.status(204).send();
+  });
+
+  // ── Avatar Upload ──
+
+  app.post<{ Params: { id: string } }>("/:id/avatar", async (req, reply) => {
+    const { id } = req.params;
+    const char = await storage.getById(id);
+    if (!char) return reply.status(404).send({ error: "Character not found" });
+
+    const body = req.body as { avatar?: string; filename?: string };
+    if (!body.avatar) {
+      return reply.status(400).send({ error: "No avatar data provided" });
+    }
+
+    // avatar is a base64 data URL or raw base64
+    let base64 = body.avatar;
+    let ext = "png";
+    if (base64.startsWith("data:")) {
+      const match = base64.match(/^data:image\/([\w+]+);base64,/);
+      if (match?.[1]) {
+        ext = match[1].replace("+xml", "");
+        base64 = base64.slice(base64.indexOf(",") + 1);
+      }
+    }
+
+    const avatarsDir = join(process.cwd(), "data", "avatars");
+    await mkdir(avatarsDir, { recursive: true });
+    const filename = `${id}.${ext}`;
+    const filepath = join(avatarsDir, filename);
+    await writeFile(filepath, Buffer.from(base64, "base64"));
+
+    const avatarPath = `/api/avatars/file/${filename}`;
+    return storage.updateAvatar(id, avatarPath);
   });
 
   // ── Personas ──
@@ -52,6 +91,25 @@ export async function charactersRoutes(app: FastifyInstance) {
     return storage.createPersona(name, description ?? "");
   });
 
+  app.patch<{ Params: { id: string } }>("/personas/:id", async (req) => {
+    const body = req.body as { name?: string; description?: string };
+    return storage.updatePersona(req.params.id, body);
+  });
+
+  app.post<{ Params: { id: string } }>("/personas/:id/avatar", async (req, reply) => {
+    const body = req.body as { avatar?: string; filename?: string };
+    if (!body.avatar) return reply.status(400).send({ error: "No avatar data" });
+    let base64 = body.avatar;
+    if (base64.includes(",")) base64 = base64.split(",")[1]!;
+    const filename = body.filename ?? `persona-${req.params.id}-${Date.now()}.png`;
+    const avatarsDir = join(process.cwd(), "data", "avatars");
+    await mkdir(avatarsDir, { recursive: true });
+    const filepath = join(avatarsDir, filename);
+    await writeFile(filepath, Buffer.from(base64, "base64"));
+    const avatarPath = `/api/avatars/file/${filename}`;
+    return storage.updatePersona(req.params.id, { avatarPath });
+  });
+
   app.put<{ Params: { id: string } }>("/personas/:id/activate", async (req) => {
     await storage.setActivePersona(req.params.id);
     return { success: true };
@@ -59,6 +117,33 @@ export async function charactersRoutes(app: FastifyInstance) {
 
   app.delete<{ Params: { id: string } }>("/personas/:id", async (req, reply) => {
     await storage.removePersona(req.params.id);
+    return reply.status(204).send();
+  });
+
+  // ── Character Groups ──
+
+  app.get("/groups/list", async () => {
+    return storage.listGroups();
+  });
+
+  app.get<{ Params: { id: string } }>("/groups/:id", async (req, reply) => {
+    const group = await storage.getGroupById(req.params.id);
+    if (!group) return reply.status(404).send({ error: "Group not found" });
+    return group;
+  });
+
+  app.post("/groups", async (req) => {
+    const input = createGroupSchema.parse(req.body);
+    return storage.createGroup(input.name, input.description ?? "", input.characterIds ?? []);
+  });
+
+  app.patch<{ Params: { id: string } }>("/groups/:id", async (req) => {
+    const input = updateGroupSchema.parse(req.body);
+    return storage.updateGroup(req.params.id, input);
+  });
+
+  app.delete<{ Params: { id: string } }>("/groups/:id", async (req, reply) => {
+    await storage.removeGroup(req.params.id);
     return reply.status(204).send();
   });
 }

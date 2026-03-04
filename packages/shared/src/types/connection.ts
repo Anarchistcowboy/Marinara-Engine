@@ -25,6 +25,8 @@ export interface APIConnection {
   maxContext: number;
   /** Whether this connection is the default */
   isDefault: boolean;
+  /** Whether this connection is in the random-selection pool */
+  useForRandom: boolean;
   createdAt: string;
   updatedAt: string;
 }

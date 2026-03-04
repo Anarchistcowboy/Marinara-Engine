@@ -26,6 +26,7 @@ export function createChatsStorage(db: DB) {
         name: input.name,
         mode: input.mode,
         characterIds: JSON.stringify(input.characterIds),
+        groupId: input.groupId ?? null,
         personaId: input.personaId,
         promptPresetId: input.promptPresetId,
         connectionId: input.connectionId,
@@ -43,11 +44,25 @@ export function createChatsStorage(db: DB) {
           ...(data.name !== undefined && { name: data.name }),
           ...(data.mode !== undefined && { mode: data.mode }),
           ...(data.characterIds !== undefined && { characterIds: JSON.stringify(data.characterIds) }),
+          ...(data.groupId !== undefined && { groupId: data.groupId }),
           ...(data.personaId !== undefined && { personaId: data.personaId }),
           ...(data.promptPresetId !== undefined && { promptPresetId: data.promptPresetId }),
           ...(data.connectionId !== undefined && { connectionId: data.connectionId }),
           updatedAt: now(),
         })
+        .where(eq(chats.id, id));
+      return this.getById(id);
+    },
+
+    /** List all chats belonging to a group. */
+    async listByGroup(groupId: string) {
+      return db.select().from(chats).where(eq(chats.groupId, groupId)).orderBy(desc(chats.updatedAt));
+    },
+
+    async updateMetadata(id: string, metadata: Record<string, unknown>) {
+      await db
+        .update(chats)
+        .set({ metadata: JSON.stringify(metadata), updatedAt: now() })
         .where(eq(chats.id, id));
       return this.getById(id);
     },

@@ -2,10 +2,11 @@
   "name": "rpg-engine",
   "version": "0.1.0",
   "private": true,
-  "description": "AI Chat & Roleplay Frontend \u2014 Conversation, Roleplay, Visual Novel",
+  "description": "AI Chat & Roleplay Frontend — Conversation, Roleplay, Visual Novel",
   "author": "Marianna",
   "license": "AGPL-3.0",
   "type": "module",
+  "main": "electron/main.cjs",
   "engines": {
     "node": ">=20",
     "pnpm": ">=9"
@@ -18,17 +19,28 @@
     "build:shared": "pnpm --filter @rpg-engine/shared build",
     "build:server": "pnpm --filter @rpg-engine/server build",
     "build:client": "pnpm --filter @rpg-engine/client build",
+    "start": "node packages/server/dist/index.js",
+    "package": "pnpm build && node electron/bundle-server.cjs && electron-builder --config electron-builder.cjs",
+    "package:win": "pnpm build && node electron/bundle-server.cjs && electron-builder --config electron-builder.cjs --win",
+    "package:mac": "pnpm build && node electron/bundle-server.cjs && electron-builder --config electron-builder.cjs --mac",
+    "package:linux": "pnpm build && node electron/bundle-server.cjs && electron-builder --config electron-builder.cjs --linux",
     "lint": "pnpm -r run lint",
     "test": "pnpm -r run test",
     "db:push": "pnpm --filter @rpg-engine/server db:push",
     "db:generate": "pnpm --filter @rpg-engine/server db:generate",
     "db:migrate": "pnpm --filter @rpg-engine/server db:migrate",
-    "clean": "pnpm -r run clean && rm -rf node_modules"
+    "clean": "pnpm -r run clean && rm -rf node_modules release"
+  },
+  "devDependencies": {
+    "electron": "^33.4.11",
+    "electron-builder": "^25.1.8",
+    "esbuild": "^0.27.3"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
       "better-sqlite3",
-      "esbuild"
+      "esbuild",
+      "electron"
     ]
   }
 }

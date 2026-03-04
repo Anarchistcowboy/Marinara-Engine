@@ -12,7 +12,7 @@ async function main() {
 
   try {
     await app.listen({ port: PORT, host: HOST });
-    app.log.info(`RPG Engine server listening on http://${HOST}:${PORT}`);
+    app.log.info(`Marinara Engine server listening on http://${HOST}:${PORT}`);
   } catch (err) {
     app.log.error(err);
     process.exit(1);

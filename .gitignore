@@ -30,6 +30,12 @@ Thumbs.db
 packages/server/data/avatars/
 packages/server/data/assets/
 packages/server/data/*.db
+data/backgrounds/
 
 # Logs
 *.log
+
+# Electron / electron-builder output
+release/
+electron/app-server/
+electron/client/
