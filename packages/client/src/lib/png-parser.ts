@@ -56,7 +56,11 @@ export async function parsePngCharacterCard(
         const keyword = new TextDecoder().decode(chunkData.slice(0, nullIdx));
         if (CHARA_KEYWORDS.has(keyword) && !found.has(keyword)) {
           const textData = new TextDecoder().decode(chunkData.slice(nullIdx + 1));
-          const jsonStr = atob(textData);
+          // Decode base64 → bytes → UTF-8 (atob alone produces Latin-1, breaking multi-byte chars)
+          const raw = atob(textData);
+          const utf8Bytes = new Uint8Array(raw.length);
+          for (let i = 0; i < raw.length; i++) utf8Bytes[i] = raw.charCodeAt(i);
+          const jsonStr = new TextDecoder().decode(utf8Bytes);
           found.set(keyword, JSON.parse(jsonStr) as Record<string, unknown>);
         }
       }
@@ -80,7 +84,10 @@ export async function parsePngCharacterCard(
                 try {
                   found.set(keyword, JSON.parse(text) as Record<string, unknown>);
                 } catch {
-                  const decoded = atob(text);
+                  const raw = atob(text);
+                  const utf8Bytes = new Uint8Array(raw.length);
+                  for (let i = 0; i < raw.length; i++) utf8Bytes[i] = raw.charCodeAt(i);
+                  const decoded = new TextDecoder().decode(utf8Bytes);
                   found.set(keyword, JSON.parse(decoded) as Record<string, unknown>);
                 }
               }

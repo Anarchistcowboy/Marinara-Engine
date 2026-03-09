@@ -337,6 +337,9 @@ export function useGenerate() {
         await qc.invalidateQueries({
           queryKey: chatKeys.messages(params.chatId),
         });
+        // Wait one frame so React renders the fetched messages before
+        // removing the streaming overlay — prevents a visible flash.
+        await new Promise<void>((r) => requestAnimationFrame(r));
         setStreaming(false);
         setProcessing(false);
         clearStreamBuffer();
