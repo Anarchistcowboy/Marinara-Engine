@@ -35,6 +35,7 @@ import {
   Save,
   Eye,
   EyeOff,
+  Download,
 } from "lucide-react";
 import { useClearAllData } from "../../hooks/use-chats";
 import { useChatStore } from "../../stores/chat.store";
@@ -900,6 +901,22 @@ function ThemesSettings() {
               title="Edit theme CSS"
             >
               <Code size={11} />
+            </button>
+            <button
+              onClick={() => {
+                const json = JSON.stringify({ name: t.name, css: t.css }, null, 2);
+                const blob = new Blob([json], { type: "application/json" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = `${t.name.replace(/[^a-zA-Z0-9_-]/g, "_")}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+              }}
+              className="rounded p-0.5 text-[var(--muted-foreground)] transition-colors hover:bg-emerald-500/10 hover:text-emerald-400"
+              title="Export theme"
+            >
+              <Download size={11} />
             </button>
             <button
               onClick={() => {

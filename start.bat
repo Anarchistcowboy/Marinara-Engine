@@ -88,20 +88,27 @@ echo  [..] Syncing database schema...
 call pnpm db:push 2>nul
 
 :: Start the server
+:: Load .env if present (respects user overrides)
+if exist .env (
+  for /f "usebackq tokens=1,* delims==" %%A in (".env") do (
+    set "%%A=%%B"
+  )
+)
+
+:: Set defaults only if not already set
+set NODE_ENV=production
+if not defined PORT set PORT=7860
+if not defined HOST set HOST=0.0.0.0
+
 echo.
 echo  ══════════════════════════════════════════
-echo    Starting Marinara Engine on http://localhost:7860
+echo    Starting Marinara Engine on http://localhost:%PORT%
 echo    Press Ctrl+C to stop
 echo  ══════════════════════════════════════════
 echo.
 
-:: Set production env
-set NODE_ENV=production
-set PORT=7860
-set HOST=0.0.0.0
-
 :: Open browser after a short delay
-start "" /b cmd /c "timeout /t 3 /nobreak >nul && start http://localhost:7860"
+start "" /b cmd /c "timeout /t 3 /nobreak >nul && start http://localhost:%PORT%"
 
 :: Start server
 cd packages\server

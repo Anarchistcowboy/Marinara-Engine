@@ -83,19 +83,27 @@ echo "  [..] Syncing database schema..."
 pnpm db:push 2>/dev/null || true
 
 # ── Start ──
+
+# Load .env if present (respects user overrides)
+if [ -f .env ]; then
+  set -a
+  . ./.env
+  set +a
+fi
+
+export NODE_ENV=production
+export PORT=${PORT:-7860}
+export HOST=${HOST:-0.0.0.0}
+
 echo ""
 echo "  ══════════════════════════════════════════"
-echo "    Starting Marinara Engine on http://localhost:7860"
+echo "    Starting Marinara Engine on http://localhost:$PORT"
 echo "    Press Ctrl+C to stop"
 echo "  ══════════════════════════════════════════"
 echo ""
 
-export NODE_ENV=production
-export PORT=7860
-export HOST=0.0.0.0
-
 # Open browser after a short delay
-(sleep 3 && open "http://localhost:7860" 2>/dev/null || xdg-open "http://localhost:7860" 2>/dev/null) &
+(sleep 3 && open "http://localhost:$PORT" 2>/dev/null || xdg-open "http://localhost:$PORT" 2>/dev/null) &
 
 # Start server
 cd packages/server
