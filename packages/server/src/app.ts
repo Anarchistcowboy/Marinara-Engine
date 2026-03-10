@@ -70,7 +70,7 @@ export async function buildApp(https?: { cert: Buffer; key: Buffer }) {
   // ── Health Check ──
   app.get("/api/health", async () => ({
     status: "ok",
-    version: "0.1.0",
+    version: "1.3.0",
     timestamp: new Date().toISOString(),
   }));
 
