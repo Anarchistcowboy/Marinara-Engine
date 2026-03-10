@@ -222,6 +222,22 @@ chmod +x start.sh
 ./start.sh
 ```
 
+**Android (Termux):**
+
+Install [Termux](https://f-droid.org/en/packages/com.termux/) from F-Droid (the Play Store version is outdated), then run:
+
+```bash
+pkg update && pkg install -y git nodejs-lts python make
+git clone https://github.com/SpicyMarinara/marinara-engine.git
+cd marinara-engine
+chmod +x start-termux.sh
+./start-termux.sh
+```
+
+The Termux launcher installs any missing packages, builds everything, and opens the app in your mobile browser at `http://localhost:7860`. First run takes a few minutes on mobile. After that, just run `./start-termux.sh` to start.
+
+> **Tip:** Install the PWA — tap the browser menu and "Add to Home Screen" for a native app feel.
+
 The start script will:
 1. **Auto-update** from Git (if a `.git` folder is detected)
 2. Check that Node.js and pnpm are installed
