@@ -3,11 +3,19 @@ setlocal enabledelayedexpansion
 title Marinara Engine - Installer
 color 0A
 
+:: -- Safety net: if anything goes catastrophically wrong, the window stays open --
+:: -- This label is jumped to on fatal errors --
+set "INSTALL_ERROR="
+
 echo.
 echo  +==========================================+
 echo  |   Marinara Engine - Windows Installer     |
 echo  |   v1.3.0                                  |
 echo  +==========================================+
+echo.
+
+:: -- Verify script is running --
+echo  [OK] Installer started successfully
 echo.
 
 :: -- Choose install location --
@@ -33,14 +41,23 @@ goto :node_ok
 echo  [..] Node.js 20+ not found - downloading installer...
 set "NODE_MSI=%TEMP%\node-lts-install.msi"
 powershell -Command "try { [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri 'https://nodejs.org/dist/v22.14.0/node-v22.14.0-x64.msi' -OutFile '%NODE_MSI%' -UseBasicParsing } catch { exit 1 }"
-if errorlevel 1 echo  [ERROR] Failed to download Node.js. Please install manually from https://nodejs.org & pause & exit /b 1
+if errorlevel 1 (
+    set "INSTALL_ERROR=Failed to download Node.js. Please install manually from https://nodejs.org"
+    goto :fatal
+)
 echo  [..] Installing Node.js (this may request admin permissions)...
 msiexec /i "%NODE_MSI%" /qb
-if errorlevel 1 echo  [ERROR] Node.js installation failed. Please install manually from https://nodejs.org & pause & exit /b 1
+if errorlevel 1 (
+    set "INSTALL_ERROR=Node.js installation failed. Please install manually from https://nodejs.org"
+    goto :fatal
+)
 del "%NODE_MSI%" 2>nul
 call :refresh_path
 where node >nul 2>&1
-if errorlevel 1 echo  [ERROR] Node.js installed but not found in PATH. Please restart your terminal and re-run. & pause & exit /b 1
+if errorlevel 1 (
+    set "INSTALL_ERROR=Node.js installed but not found in PATH. Please restart your computer and re-run the installer."
+    goto :fatal
+)
 echo  [OK] Node.js installed successfully
 
 :node_ok
@@ -56,14 +73,23 @@ goto :git_ok
 echo  [..] Git not found - downloading installer...
 set "GIT_EXE=%TEMP%\git-install.exe"
 powershell -Command "try { [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; $rel = Invoke-RestMethod -Uri 'https://api.github.com/repos/git-for-windows/git/releases/latest' -UseBasicParsing; $asset = $rel.assets | Where-Object { $_.name -match '64-bit\.exe$' } | Select-Object -First 1; Invoke-WebRequest -Uri $asset.browser_download_url -OutFile '%GIT_EXE%' -UseBasicParsing } catch { exit 1 }"
-if errorlevel 1 echo  [ERROR] Failed to download Git. Please install manually from https://git-scm.com & pause & exit /b 1
+if errorlevel 1 (
+    set "INSTALL_ERROR=Failed to download Git. Please install manually from https://git-scm.com"
+    goto :fatal
+)
 echo  [..] Installing Git (this may request admin permissions)...
 "%GIT_EXE%" /VERYSILENT /NORESTART /NOCANCEL /SP- /CLOSEAPPLICATIONS /RESTARTAPPLICATIONS /COMPONENTS="icons,ext\reg\shellhere,assoc,assoc_sh"
-if errorlevel 1 echo  [ERROR] Git installation failed. Please install manually from https://git-scm.com & pause & exit /b 1
+if errorlevel 1 (
+    set "INSTALL_ERROR=Git installation failed. Please install manually from https://git-scm.com"
+    goto :fatal
+)
 del "%GIT_EXE%" 2>nul
 call :refresh_path
 where git >nul 2>&1
-if errorlevel 1 echo  [ERROR] Git installed but not found in PATH. Please restart your terminal and re-run. & pause & exit /b 1
+if errorlevel 1 (
+    set "INSTALL_ERROR=Git installed but not found in PATH. Please restart your computer and re-run the installer."
+    goto :fatal
+)
 echo  [OK] Git installed successfully
 
 :git_ok
@@ -76,8 +102,11 @@ goto :pnpm_ok
 
 :install_pnpm
 echo  [..] Installing pnpm...
-npm install -g pnpm
-if errorlevel 1 echo  [ERROR] Failed to install pnpm. Please run: npm install -g pnpm & pause & exit /b 1
+call npm install -g pnpm
+if errorlevel 1 (
+    set "INSTALL_ERROR=Failed to install pnpm. Please run: npm install -g pnpm"
+    goto :fatal
+)
 
 :pnpm_ok
 echo  [OK] pnpm found
@@ -87,7 +116,10 @@ echo.
 if exist "%INSTALL_DIR%\.git" goto :update_repo
 echo  [..] Cloning Marinara Engine to %INSTALL_DIR%...
 git clone https://github.com/SpicyMarinara/Marinara-Engine.git "%INSTALL_DIR%"
-if errorlevel 1 echo  [ERROR] Failed to clone repository. & pause & exit /b 1
+if errorlevel 1 (
+    set "INSTALL_ERROR=Failed to clone repository. Check your internet connection and try again."
+    goto :fatal
+)
 cd /d "%INSTALL_DIR%"
 goto :deps
 
@@ -103,9 +135,8 @@ echo.
 echo  [..] Installing dependencies (this may take a few minutes)...
 call pnpm install
 if %errorlevel% neq 0 (
-    echo  [ERROR] Failed to install dependencies.
-    pause
-    exit /b 1
+    set "INSTALL_ERROR=Failed to install dependencies."
+    goto :fatal
 )
 echo  [OK] Dependencies installed
 
@@ -114,9 +145,8 @@ echo.
 echo  [..] Building Marinara Engine...
 call pnpm build
 if %errorlevel% neq 0 (
-    echo  [ERROR] Build failed.
-    pause
-    exit /b 1
+    set "INSTALL_ERROR=Build failed."
+    goto :fatal
 )
 echo  [OK] Build complete
 
@@ -159,9 +189,24 @@ echo.
 pause
 goto :eof
 
+:: -- Fatal error handler: always visible, never silent --
+:fatal
+echo.
+echo  ==========================================
+echo    [ERROR] !INSTALL_ERROR!
+echo  ==========================================
+echo.
+echo  The installer could not complete.
+echo  Please screenshot this window and report
+echo  the issue if you need help.
+echo.
+pause
+exit /b 1
+
 :: -- Subroutine: refresh PATH from registry --
 :refresh_path
 for /f "tokens=2*" %%A in ('reg query "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Environment" /v Path 2^>nul') do set "SYS_PATH=%%B"
 for /f "tokens=2*" %%A in ('reg query "HKCU\Environment" /v Path 2^>nul') do set "USR_PATH=%%B"
 set "PATH=!SYS_PATH!;!USR_PATH!"
+goto :eof
 goto :eof

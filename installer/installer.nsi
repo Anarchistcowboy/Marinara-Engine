@@ -21,7 +21,9 @@ BrandingText "Marinara Engine v1.3.0"
 !insertmacro MUI_LANGUAGE "English"
 
 Section "Install"
-    SetOutPath "$TEMP\marinara-installer"
+    ; Use LOCALAPPDATA instead of TEMP — Windows Defender on Win10
+    ; often quarantines .bat files extracted to TEMP by unsigned executables
+    SetOutPath "$LOCALAPPDATA\marinara-installer"
     File "install.bat"
 
     DetailPrint "Running Marinara Engine installer..."
@@ -29,8 +31,10 @@ Section "Install"
     DetailPrint ""
 
     ; Run the bat in a visible, interactive console
-    ExecWait '"cmd.exe" /c "$TEMP\marinara-installer\install.bat"'
+    ; Use unquoted cmd.exe and /c with quoted path — avoids Win10 CreateProcess quoting bug
+    ExecWait 'cmd.exe /c "$LOCALAPPDATA\marinara-installer\install.bat"'
 
     ; Clean up
-    RMDir /r "$TEMP\marinara-installer"
+    Delete "$LOCALAPPDATA\marinara-installer\install.bat"
+    RMDir "$LOCALAPPDATA\marinara-installer"
 SectionEnd
