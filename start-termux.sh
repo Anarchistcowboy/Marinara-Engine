@@ -107,31 +107,29 @@ fi
 
 if [ ! -f "$BS3_DIR/build/Release/better_sqlite3.node" ]; then
     echo "  [..] Compiling better-sqlite3 native module..."
-    echo "       (requires clang — may take a minute)"
+    echo "       This takes 2-5 minutes on a phone. Please wait."
+    echo ""
 
-    # node-gyp needs these on Termux:
-    #  - CC/CXX: clang is provided by build-essential
-    #  - PYTHON: gyp configure uses it to generate Makefiles
-    #  - --nodedir: tells node-gyp where include/node/node.h lives
-    #    (Termux prefix, NOT ~/.cache/node-gyp which node-gyp downloads from nodejs.org)
-    export CC="${CC:-cc}"
-    export CXX="${CXX:-c++}"
-    export LINK="${LINK:-c++}"
-    export AR="${AR:-ar}"
-    PYTHON_BIN="$(which python3 2>/dev/null || which python 2>/dev/null)"
-    if [ -n "$PYTHON_BIN" ]; then
-        export PYTHON="$PYTHON_BIN"
+    # Ensure node-addon-api is available (better-sqlite3 binding.gyp needs it)
+    if [ ! -d "$BS3_DIR/node_modules/node-addon-api" ]; then
+        NAPI_DIR=$(find node_modules -path "*/node-addon-api/napi.h" 2>/dev/null | head -1)
+        if [ -n "$NAPI_DIR" ]; then
+            mkdir -p "$BS3_DIR/node_modules"
+            ln -sf "$(cd "$(dirname "$NAPI_DIR")" && pwd)" "$BS3_DIR/node_modules/node-addon-api"
+        fi
     fi
-    NODE_PREFIX="$(dirname "$(dirname "$(command -v node)")")"
 
     # Install node-gyp globally — npx creates a temp env that breaks
     # require('node-addon-api') resolution inside pnpm's virtual store.
     if ! command -v node-gyp &>/dev/null; then
         echo "  [..] Installing node-gyp..."
-        npm install -g node-gyp 2>&1
+        npm install -g node-gyp
     fi
 
-    (cd "$BS3_DIR" && node-gyp rebuild --release --nodedir="$NODE_PREFIX" 2>&1) || {
+    # Run node-gyp from the package directory.
+    # Do NOT pass --nodedir (it can stall if the path has no usable headers;
+    # node-gyp will auto-download the correct headers for this Node version).
+    (cd "$BS3_DIR" && node-gyp rebuild --release --loglevel=verbose) || {
         echo ""
         echo "  [ERR] Failed to compile better-sqlite3."
         echo "        Make sure build tools are installed:"
