@@ -59,8 +59,7 @@ export async function executeKnowledgeRetrieval(
   model: string,
   sourceMaterial: string,
 ): Promise<AgentResult> {
-  const maxTokens = (config.settings.maxTokens as number) ?? 2048;
-  // Reserve tokens for system prompt (~600), context block (~1500), and response (~maxTokens)
+  // Reserve tokens for system prompt (~600) and context block (~1500).
   // Rough budget for source material: whatever's left
   const contextBudget = (config.settings.sourceContextBudget as number) ?? 6000;
 
