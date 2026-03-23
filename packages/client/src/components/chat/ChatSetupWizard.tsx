@@ -156,7 +156,13 @@ function ConversationQuickSetup({ chat, onFinish }: ChatSetupWizardProps) {
 
   const handleStartChatting = useCallback(async () => {
     if (!hasConnection || !hasCharacters) return;
-    await updateMeta.mutateAsync({ id: chat.id, autonomousMessages: autonomousEnabled });
+    // Apply user's saved custom conversation prompt (if any) to this new chat
+    const savedPrompt = useUIStore.getState().customConversationPrompt;
+    await updateMeta.mutateAsync({
+      id: chat.id,
+      autonomousMessages: autonomousEnabled,
+      ...(savedPrompt ? { customSystemPrompt: savedPrompt } : {}),
+    });
     if (autonomousEnabled && generateSchedule) {
       setScheduleState("generating");
       try {
@@ -180,7 +186,7 @@ function ConversationQuickSetup({ chat, onFinish }: ChatSetupWizardProps) {
           initial={{ opacity: 0, y: 16, scale: 0.97 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           transition={{ duration: 0.2, ease: "easeOut" }}
-          className="pointer-events-auto w-full max-w-sm rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-2xl overflow-hidden"
+          className="pointer-events-auto w-full max-w-sm max-h-[90vh] flex flex-col rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-2xl overflow-hidden"
         >
           {/* Header */}
           <div className="flex items-center justify-between border-b border-[var(--border)] px-4 py-3">
@@ -196,7 +202,7 @@ function ConversationQuickSetup({ chat, onFinish }: ChatSetupWizardProps) {
             </button>
           </div>
 
-          <div className="p-4 space-y-4">
+          <div className="p-4 space-y-4 overflow-y-auto min-h-0 flex-1">
             {/* Conversation name */}
             <div className="space-y-1.5">
               <label className="text-[0.6875rem] font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
