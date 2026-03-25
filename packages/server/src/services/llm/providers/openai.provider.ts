@@ -110,13 +110,21 @@ export class OpenAIProvider extends BaseLLMProvider {
       // Reasoning models use max_completion_tokens instead of max_tokens
       body.max_completion_tokens = options.maxTokens ?? 4096;
       // Reasoning models don't support temperature/top_p
-      if (options.reasoningEffort) body.reasoning_effort = options.reasoningEffort;
     } else {
       body.temperature = options.temperature ?? 1;
       body.max_tokens = options.maxTokens ?? 4096;
       body.top_p = options.topP ?? 1;
       if (options.frequencyPenalty) body.frequency_penalty = options.frequencyPenalty;
       if (options.presencePenalty) body.presence_penalty = options.presencePenalty;
+    }
+
+    // GLM models (GLM-4.7, GLM-5, etc.) use a `thinking` toggle instead of reasoning_effort
+    const modelLower = options.model.toLowerCase();
+    if (modelLower.startsWith("glm-")) {
+      body.thinking = { type: options.reasoningEffort ? "enabled" : "disabled" };
+    } else if (options.reasoningEffort) {
+      // Send reasoning_effort if set (outside reasoning check so custom/OAI-compatible providers also get it)
+      body.reasoning_effort = options.reasoningEffort;
     }
 
     const response = await fetch(url, {
@@ -231,13 +239,17 @@ export class OpenAIProvider extends BaseLLMProvider {
 
     if (reasoning) {
       body.max_completion_tokens = options.maxTokens ?? 4096;
-      if (options.reasoningEffort) body.reasoning_effort = options.reasoningEffort;
     } else {
       body.temperature = options.temperature ?? 1;
       body.max_tokens = options.maxTokens ?? 4096;
       body.top_p = options.topP ?? 1;
       if (options.frequencyPenalty) body.frequency_penalty = options.frequencyPenalty;
       if (options.presencePenalty) body.presence_penalty = options.presencePenalty;
+    }
+
+    // Send reasoning_effort if set (outside reasoning check so custom/OAI-compatible providers also get it)
+    if (options.reasoningEffort) {
+      body.reasoning_effort = options.reasoningEffort;
     }
 
     const response = await fetch(url, {
