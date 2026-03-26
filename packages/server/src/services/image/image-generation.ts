@@ -316,6 +316,7 @@ function extractFirstFileFromZip(zip: Uint8Array): Uint8Array | null {
 
   // Parse central directory entry for the first file
   const cd = cdOffset;
+  if (cd + 45 >= zip.length) return null;
   if (zip[cd] !== 0x50 || zip[cd + 1] !== 0x4b || zip[cd + 2] !== 0x01 || zip[cd + 3] !== 0x02) return null;
 
   const method = zip[cd + 10]! | (zip[cd + 11]! << 8);
