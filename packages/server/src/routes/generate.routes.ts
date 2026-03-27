@@ -2391,8 +2391,7 @@ export async function generateRoutes(app: FastifyInstance) {
             resolvedEffort ?? "none",
           );
           for (const m of messagesForGen) {
-            const preview = m.content.length > 200 ? m.content.slice(0, 200) + "..." : m.content;
-            console.log("  [%s] %s", m.role.toUpperCase(), preview);
+            console.log("  [%s] %s", m.role.toUpperCase(), m.content);
           }
         }
 
