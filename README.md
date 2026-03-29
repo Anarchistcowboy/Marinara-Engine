@@ -52,31 +52,34 @@
 
 ## Changelog
 
-### v1.4.4
+### v1.4.5
 
-**Added:**
+**New Features:**
 
-- **Lorebook Depth Injection** — Lorebook entries with depth > 0 are now properly injected at the correct position in the prompt. Previously, depth entries were computed but never inserted into the message array (in both conversation and preset assembly modes).
-- **Full Persona Context for Agents** — Agents now receive personality, backstory, appearance, scenario, and RPG stats in their `<lore>` block, giving them richer context for more accurate responses.
-- **RPG Stats in Main Prompt** — Persona RPG attributes (HP, MP, stat bars) are now injected into the main generation prompt alongside the persona description.
-- **Image Generation Support** - Better support of image generation endpoints and a button to generate an image on demand.
+- **Buttplug.io Haptic Integration** — "Love Toys Control" agent with per-device capability detection and 6 haptic actions (vibrate, oscillate, rotate, position, stop, constrict). Characters can trigger device commands inline via `<haptic>` tags.
+- **CYOA Choices Agent** — Generates 2–4 in-character choices after each roleplay response. Click a choice to send it as your next message.
+- **Multi-Select Message Deletion** — Select and bulk-delete messages in both Conversation and Roleplay modes via a new dialog flow.
+- **Echo Chamber Persistence** — Echo messages are now saved to the database and restored when switching back to a chat.
+- **Profile Export/Import** — Full backup and restore of characters, personas, lorebooks, presets, and agent configs as a single JSON file.
+- **Always-Enabled Send Button** — Roleplay mode now always shows a send/generate button with smart continue logic.
 
-**Improved:**
+**Improvements:**
 
-- **Agent Prompt Architecture** — Restructured agent prompts into a clean `<role>` + `<lore>` + `<agents>` system message, with multi-turn chat history as USER/ASSISTANT pairs. Reduces token usage and improves agent response quality.
-- **Agent Cost Optimization** — Compact JSON output (removed pretty-printing), reduced default agent context from 8 to 5 messages, and added full prompt logging for debugging.
-- **Retry Agents** — Fixed `/retry-agents` to use batched execution with provider+model grouping, proper context slicing, and full persona resolution (was previously passing blank persona and entire chat history).
-- **Background & Spotify Agents** — Removed redundant `reason` field from output schemas to reduce token waste.
-- **Stat Bar UI Simplification** — Removed manual value inputs from HP/MP and stat bars in both Persona and Character editors. The model now controls current values; users only set the max.
+- **Responsive Layout** — Auto-closing panels on narrow screens, improved breakpoints, `min-w-0` overflow fix on AppShell.
+- **Accessibility** — Message multi-select checkboxes now use proper `<button role="checkbox">` with `aria-checked` and `aria-label`.
+- **Security** — Bulk message deletes are now scoped to the chat's `chatId`, preventing cross-chat deletion.
+- **Validation** — `Number.isFinite()` guards on haptic intensity/duration in both the service layer and command parser.
+- **Robustness** — Bulk deletes are chunked (500/batch) to avoid hitting SQLite's variable limit.
+- **Echo Chamber** — `loadedChatRef` reset on toggle-off for proper reload on re-enable.
+- **Haptic Safety** — Invalid device indices now return an empty target list instead of falling back to all connected devices.
 
 **Bug Fixes:**
 
-- **iOS Safe Area** — Fixed close buttons and interactive elements being obscured by the iPhone status bar (battery/time/signal icons) on all fullscreen overlays, modals, drawers, and panels. Added `env(safe-area-inset-top)` padding to 16 components.
-- **Expression Agent Persistence** — Sprite expressions set by the Expression agent now survive page reloads. Previously, keyword-based fallback detection was overwriting saved agent expressions on every chat load.
-- **Chat Input Flash** — Fixed text momentarily disappearing when pressing Enter to create newlines in the chat input. Caused by a debounced auto-resize that briefly collapsed the textarea height.
-- **Preset Variable Bleed** — Preset choice variables (from `{{pick}}` macros) are now cleared when switching presets, preventing stale selections from one preset leaking into another.
-- **HTML Tag Stripping for Agents** — Agent prompts now strip HTML/XML styling tags from chat messages to prevent formatting artifacts from confusing the model.
-- **Chat Summary Removed from Agents** — Removed chat summary injection from agent calls to reduce noise and token usage.
+- Fixed the Echo Chamber agent count badge not updating.
+- Fixed combat agent type mismatch error.
+- Fixed Character Menu `.marinara` file import failing silently.
+- "Clear Trackers" now also clears committed agent runs and agent memory from the database.
+- Removed unused connections data from profile export envelope.
 
 ---
 
@@ -84,7 +87,7 @@
 
 ## Windows EASIEST METHOD
 
-Download **[Marinara-Engine-Installer-1.4.4.exe](https://github.com/SpicyMarinara/Marinara-Engine/releases/download/v1.4.4/Marinara-Engine-Installer-1.4.4.exe)** from the [Releases](https://github.com/SpicyMarinara/Marinara-Engine/releases) page and run it. The installer checks for Node.js and Git, clones the repo, installs dependencies, builds the app, and creates a desktop shortcut.
+Download **[Marinara-Engine-Installer-1.4.5.exe](https://github.com/SpicyMarinara/Marinara-Engine/releases/download/v1.4.5/Marinara-Engine-Installer-1.4.5.exe)** from the [Releases](https://github.com/SpicyMarinara/Marinara-Engine/releases) page and run it. The installer checks for Node.js and Git, clones the repo, installs dependencies, builds the app, and creates a desktop shortcut.
 
 ---
 
@@ -264,7 +267,7 @@ pnpm dev:client
 - **Two Visual Themes** — Y2K Marinara theme and a faithful SillyTavern classic theme
 - **Light & Dark Mode** — One is obviously superior.
 
-### AI Agent System (23 Built-In)
+### AI Agent System (25 Built-In)
 
 Agents are autonomous AI assistants that run alongside your chat, each handling a specific task:
 
@@ -292,7 +295,9 @@ Agents are autonomous AI assistants that run alongside your chat, each handling 
 | **Knowledge Retrieval**   | Scans lorebooks for relevant context using chunked RAG                       |
 | **Schedule Planner**      | Generates realistic weekly schedules for characters in Conversation mode     |
 | **Response Orchestrator** | Decides which character(s) should respond in group Conversations             |
-| **Autonomous Messenger**  | Lets characters send messages unprompted when the user is inactive           |
+| **Love Toys Control**     | Controls Buttplug.io haptic devices with per-device capability awareness     |
+| **CYOA Choices**          | Generates 2–4 in-character choices for the player after each response        |
+| **Autonomous Messenger**  | Allows characters to send messages unprompted when the user is inactive      |
 
 All agents are disabled by default — enable only the ones you want. You can also create **custom agents** with your own prompts and tool configurations.
 
@@ -397,6 +402,15 @@ If you see an error like `EPERM: operation not permitted, open 'C:\Program Files
 
 - [**Join our Discord**](https://discord.com/invite/KdAkTg94ME) — Chat, get help, share characters, and give feedback
 - [**Support on Ko-fi**](https://ko-fi.com/marinara_spaghetti) — Help keep the project alive
+
+---
+
+## Contributors
+
+- [Spicy Marinara](https://github.com/SpicyMarinara)
+- [Jorge Becerra](https://github.com/JorgeLTE)
+- [Coda](https://github.com/coxde)
+- [Andy Mauragis](https://github.com/amauragis)
 
 ---
 
