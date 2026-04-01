@@ -67,6 +67,8 @@ export function createAgentsStorage(db: DB) {
     },
 
     async remove(id: string) {
+      await db.delete(agentRuns).where(eq(agentRuns.agentConfigId, id));
+      await db.delete(agentMemory).where(eq(agentMemory.agentConfigId, id));
       await db.delete(agentConfigs).where(eq(agentConfigs.id, id));
     },
 
