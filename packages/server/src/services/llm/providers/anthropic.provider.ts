@@ -73,7 +73,6 @@ export class AnthropicProvider extends BaseLLMProvider {
       }),
       stream: options.stream ?? true,
       ...(options.temperature !== undefined && { temperature: options.temperature }),
-      ...(options.topP !== undefined && { top_p: options.topP }),
       ...(options.topK ? { top_k: options.topK } : {}),
     };
 
