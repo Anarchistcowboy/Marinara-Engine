@@ -1108,8 +1108,8 @@ export function ChatArea() {
           <div className="flex flex-1 flex-col overflow-hidden">
             {/* ── Header / Toolbar area ── */}
             <>
-              {/* Desktop top bar */}
-              <div className={cn("pointer-events-none relative z-40 items-center px-4 py-2", centerCompact ? "hidden" : "flex")}>
+              {/* Desktop top bar — hidden on mobile AND when compact */}
+              <div className={cn("pointer-events-none relative z-40 items-center px-4 py-2 max-md:hidden", centerCompact ? "hidden" : "flex")}>
                 {chat && chatMeta.enableAgents && (
                   <div className="pointer-events-auto flex-1 overflow-x-auto">
                     <RoleplayHUD
@@ -1163,8 +1163,8 @@ export function ChatArea() {
                   </ToolbarMenu>
                 </div>
               </div>
-              {/* Compact top bar */}
-              <div className={cn("pointer-events-auto relative z-40 flex-col w-full", centerCompact ? "flex" : "hidden")}>
+              {/* Compact / mobile top bar */}
+              <div className={cn("pointer-events-auto relative z-40 w-full flex-col", centerCompact ? "flex" : "flex md:hidden")}>
                 {chat && chatMeta.enableAgents && (
                   <div className="flex w-full items-center justify-between px-2 pt-2 pb-1">
                     <RoleplayHUD
@@ -1270,7 +1270,7 @@ export function ChatArea() {
             <div className={cn("relative flex-1 overflow-hidden z-10")}>
               <div
                 ref={scrollRef}
-                className={cn("mari-messages-scroll h-full overflow-y-auto overflow-x-hidden pt-4 pb-1 rpg-chat-messages-mobile relative", centerCompact ? "px-3" : "px-[15%]")}
+                className={cn("mari-messages-scroll h-full overflow-y-auto overflow-x-hidden pt-4 pb-1 rpg-chat-messages-mobile relative", centerCompact ? "px-3" : "px-3 md:px-[15%]")}
               >
                 {/* Load More */}
                 {hasNextPage && (
@@ -1386,7 +1386,7 @@ export function ChatArea() {
 
             {/* ── Input area ── */}
             <div className="relative z-20">
-              <div className={cn("relative", centerCompact ? "px-3" : "px-[12%]")}>
+              <div className={cn("relative", centerCompact ? "px-3" : "px-3 md:px-[12%]")}>
                 {chatMeta.sceneStatus === "active" && (
                   <EndSceneBar
                     sceneChatId={activeChatId}
@@ -1640,10 +1640,10 @@ function ToolbarMenu({ children }: { children: React.ReactNode }) {
 
   return (
     <>
-      {/* Desktop: show children inline */}
-      <div className={cn("items-center gap-1.5", compact ? "hidden" : "flex")}>{children}</div>
-      {/* Compact: show ... button + popover */}
-      <div className={cn("relative shrink-0", compact ? "block" : "hidden")} ref={btnRef}>
+      {/* Desktop: show children inline — hidden on mobile */}
+      <div className={cn("items-center gap-1.5 max-md:hidden", compact ? "hidden" : "flex")}>{children}</div>
+      {/* Compact / mobile: show ... button + popover */}
+      <div className={cn("relative shrink-0", compact ? "block" : "block md:hidden")} ref={btnRef}>
         <button
           onClick={() => setOpen(!open)}
           className={cn(
