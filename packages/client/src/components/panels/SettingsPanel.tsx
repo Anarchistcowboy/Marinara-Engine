@@ -32,6 +32,8 @@ import {
   Download,
   FolderOpen,
   Volume2,
+  RefreshCw,
+  ExternalLink,
 } from "lucide-react";
 import { useClearAllData } from "../../hooks/use-chats";
 import { useChatStore } from "../../stores/chat.store";
@@ -1694,10 +1696,134 @@ function AdvancedSettings() {
     },
   });
 
+  const updateCheck = useQuery<{
+    currentVersion: string;
+    latestVersion: string;
+    updateAvailable: boolean;
+    releaseUrl: string;
+    releaseNotes: string;
+    publishedAt: string;
+    installType: "git" | "standalone";
+  }>({
+    queryKey: ["update-check"],
+    queryFn: () => api.get("/updates/check"),
+    enabled: false,
+    retry: false,
+  });
+
+  const applyUpdate = useMutation({
+    mutationFn: () => api.post<{ status: string; message: string }>("/updates/apply"),
+    onSuccess: (data) => {
+      if (data.status === "already_up_to_date") {
+        toast.info(data.message);
+      } else {
+        toast.success(data.message);
+      }
+    },
+    onError: (err: unknown) => {
+      const message = err instanceof Error ? err.message : "Update failed";
+      toast.error(message);
+    },
+  });
+
   return (
     <div className="flex flex-col gap-3">
       <div className="text-xs text-[var(--muted-foreground)]">Advanced settings for power users.</div>
 
+      {/* ── Updates ── */}
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center gap-1.5">
+          <RefreshCw size="0.75rem" className="text-[var(--muted-foreground)]" />
+          <span className="text-xs font-medium">Updates</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => updateCheck.refetch()}
+            disabled={updateCheck.isFetching}
+            className="flex items-center justify-center gap-1.5 rounded-lg bg-[var(--primary)] px-3 py-2 text-xs font-medium text-white transition-all hover:opacity-90 active:scale-95 disabled:opacity-50"
+          >
+            {updateCheck.isFetching ? (
+              <>
+                <Loader2 size="0.8125rem" className="animate-spin" />
+                Checking…
+              </>
+            ) : (
+              <>
+                <RefreshCw size="0.8125rem" />
+                Check for Updates
+              </>
+            )}
+          </button>
+          {updateCheck.data && (
+            <span className="text-[0.6875rem] text-[var(--muted-foreground)]">
+              Current: v{updateCheck.data.currentVersion}
+            </span>
+          )}
+        </div>
+
+        {updateCheck.data && !updateCheck.data.updateAvailable && (
+          <div className="flex items-center gap-1.5 rounded-lg bg-[var(--secondary)] px-2.5 py-2 ring-1 ring-[var(--border)]">
+            <Check size="0.8125rem" className="text-green-500 shrink-0" />
+            <span className="text-xs">You're on the latest version (v{updateCheck.data.currentVersion})</span>
+          </div>
+        )}
+
+        {updateCheck.data?.updateAvailable && (
+          <div className="flex flex-col gap-2 rounded-lg bg-[var(--secondary)] p-2.5 ring-1 ring-[var(--border)]">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium">v{updateCheck.data.latestVersion} available</span>
+              <a
+                href={updateCheck.data.releaseUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 text-[0.625rem] text-[var(--primary)] hover:underline"
+              >
+                Release notes <ExternalLink size="0.625rem" />
+              </a>
+            </div>
+            {updateCheck.data.releaseNotes && (
+              <p className="text-[0.625rem] text-[var(--muted-foreground)] line-clamp-4 whitespace-pre-wrap">
+                {updateCheck.data.releaseNotes}
+              </p>
+            )}
+            {updateCheck.data.installType === "git" ? (
+              <button
+                onClick={() => applyUpdate.mutate()}
+                disabled={applyUpdate.isPending}
+                className="flex items-center justify-center gap-1.5 rounded-lg bg-[var(--primary)] px-3 py-2 text-xs font-medium text-white transition-all hover:opacity-90 active:scale-95 disabled:opacity-50"
+              >
+                {applyUpdate.isPending ? (
+                  <>
+                    <Loader2 size="0.8125rem" className="animate-spin" />
+                    Updating…
+                  </>
+                ) : (
+                  <>
+                    <Download size="0.8125rem" />
+                    Apply Update
+                  </>
+                )}
+              </button>
+            ) : (
+              <div className="text-[0.625rem] text-[var(--muted-foreground)]">
+                To update, run:{" "}
+                <code className="rounded bg-[var(--background)] px-1 py-0.5 text-[0.625rem]">
+                  docker compose pull && docker compose up -d
+                </code>
+              </div>
+            )}
+          </div>
+        )}
+
+        {updateCheck.isError && (
+          <div className="flex items-center gap-1.5 rounded-lg bg-[var(--destructive)]/10 px-2.5 py-2 text-xs text-[var(--destructive)]">
+            <AlertTriangle size="0.8125rem" className="shrink-0" />
+            Could not check for updates. Try again later.
+          </div>
+        )}
+      </div>
+
+      <div className="retro-divider" />
       <ToggleSetting
         label="Group consecutive messages"
         checked={messageGrouping}

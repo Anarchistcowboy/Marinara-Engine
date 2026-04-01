@@ -32,6 +32,7 @@ import { translateRoutes } from "./translate.routes.js";
 import { hapticRoutes } from "./haptic.routes.js";
 import { botBrowserRoutes } from "./bot-browser.routes.js";
 import { chatFoldersRoutes } from "./chat-folders.routes.js";
+import { updatesRoutes } from "./updates.routes.js";
 
 export async function registerRoutes(app: FastifyInstance) {
   await app.register(chatsRoutes, { prefix: "/api/chats" });
@@ -64,4 +65,5 @@ export async function registerRoutes(app: FastifyInstance) {
   await app.register(translateRoutes, { prefix: "/api/translate" });
   await app.register(hapticRoutes, { prefix: "/api/haptic" });
   await app.register(botBrowserRoutes, { prefix: "/api/bot-browser" });
+  await app.register(updatesRoutes, { prefix: "/api/updates" });
 }

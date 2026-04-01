@@ -205,7 +205,16 @@ Then open **<http://localhost:7860>**. That's it — no account, no cloud, every
 
 This works for all platforms: Windows (installer or manual), macOS, Linux, and Termux.
 
-To update manually (e.g., if you don't use the start scripts):
+#### In-App Update Check
+
+You can also check for updates without restarting. Go to **Settings → Advanced → Updates** and click **Check for Updates**. If a new version is available you'll see the release notes and:
+
+- **Git installs** — Click **Apply Update** to pull, rebuild, and restart the server automatically.
+- **Docker** — The UI shows the command to run: `docker compose pull && docker compose up -d`.
+
+#### Manual Update
+
+If you don't use the start scripts or the in-app updater:
 
 ```bash
 git pull
