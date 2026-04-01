@@ -40,6 +40,12 @@
 </p>
 
 <p align="center">
+  <img src="docs/screenshots/Browser_Tab.png" width="90%" alt="Bot Browser" />
+  <br/>
+  <em>Bot Browser — Search and import characters from Chub.ai</em>
+</p>
+
+<p align="center">
   <img src="docs/screenshots/Mobile_Group_Conversation.png" width="30%" alt="Mobile Group Conversation" />
   &nbsp;&nbsp;&nbsp;&nbsp;
   <img src="docs/screenshots/Mobile_Roleplay_View.png" width="30%" alt="Mobile Roleplay" />
