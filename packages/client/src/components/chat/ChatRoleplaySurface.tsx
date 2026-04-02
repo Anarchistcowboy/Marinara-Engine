@@ -1,5 +1,15 @@
 import { createPortal } from "react-dom";
-import { useEffect, useLayoutEffect, useRef, useState, type ComponentProps, type ReactNode, type RefObject } from "react";
+import {
+  Suspense,
+  lazy,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ComponentProps,
+  type ReactNode,
+  type RefObject,
+} from "react";
 import { type SpritePlacement, type SpriteSide } from "@marinara-engine/shared";
 import {
   FolderOpen,
@@ -25,23 +35,55 @@ import { useUpdateChatMetadata } from "../../hooks/use-chats";
 import { useActiveLorebookEntries } from "../../hooks/use-lorebooks";
 import { ChatMessage } from "./ChatMessage";
 import { ChatInput } from "./ChatInput";
-import { RoleplayHUD } from "./RoleplayHUD";
-import { WeatherEffects } from "./WeatherEffects";
-import { SpriteOverlay } from "./SpriteOverlay";
-import { SpriteSidebar } from "./SpriteSidebar";
-import { EchoChamberPanel } from "./EchoChamberPanel";
 import { CyoaChoices } from "./CyoaChoices";
-import { EncounterModal } from "./EncounterModal";
 import { EndSceneBar } from "./SceneBanner";
-import { SummaryPopover } from "./SummaryPopover";
 import { ChatCommonOverlays } from "./ChatCommonOverlays";
 import type { CharacterMap, MessageWithSwipes, PeekPromptData, PersonaInfo } from "./chat-area.types";
 
 type ChatData = ComponentProps<typeof ChatCommonOverlays>["chat"];
 
+const RoleplayHUD = lazy(async () => {
+  const module = await import("./RoleplayHUD");
+  return { default: module.RoleplayHUD };
+});
+
+const WeatherEffects = lazy(async () => {
+  const module = await import("./WeatherEffects");
+  return { default: module.WeatherEffects };
+});
+
+const SpriteOverlay = lazy(async () => {
+  const module = await import("./SpriteOverlay");
+  return { default: module.SpriteOverlay };
+});
+
+const SpriteSidebar = lazy(async () => {
+  const module = await import("./SpriteSidebar");
+  return { default: module.SpriteSidebar };
+});
+
+const EchoChamberPanel = lazy(async () => {
+  const module = await import("./EchoChamberPanel");
+  return { default: module.EchoChamberPanel };
+});
+
+const EncounterModal = lazy(async () => {
+  const module = await import("./EncounterModal");
+  return { default: module.EncounterModal };
+});
+
+const SummaryPopover = lazy(async () => {
+  const module = await import("./SummaryPopover");
+  return { default: module.SummaryPopover };
+});
+
 function WeatherEffectsConnected() {
   const gs = useGameStateStore((s) => s.current);
-  return <WeatherEffects weather={gs?.weather ?? null} timeOfDay={gs?.time ?? null} />;
+  return (
+    <Suspense fallback={null}>
+      <WeatherEffects weather={gs?.weather ?? null} timeOfDay={gs?.time ?? null} />
+    </Suspense>
+  );
 }
 
 function CrossfadeBackground({ url, className }: { url: string | null; className?: string }) {
@@ -276,13 +318,15 @@ function SummaryButton({
         <ScrollText size="0.875rem" />
       </button>
       {open && (
-        <SummaryPopover
-          chatId={chatId}
-          summary={summary}
-          contextSize={summaryContextSize}
-          onContextSizeChange={onContextSizeChange}
-          onClose={() => setOpen(false)}
-        />
+        <Suspense fallback={null}>
+          <SummaryPopover
+            chatId={chatId}
+            summary={summary}
+            contextSize={summaryContextSize}
+            onContextSizeChange={onContextSizeChange}
+            onClose={() => setOpen(false)}
+          />
+        </Suspense>
       )}
     </div>
   );
@@ -725,16 +769,19 @@ export function ChatRoleplaySurface({
   isGrouped,
 }: RoleplaySurfaceProps) {
   const linkedChatName = chat?.connectedChatId ? allChats?.find((c) => c.id === chat.connectedChatId)?.name : undefined;
+  const echoChamberOpen = useUIStore((s) => s.echoChamberOpen);
 
   return (
     <div data-component="ChatArea.Roleplay" className="flex flex-1 overflow-hidden">
       {expressionAgentEnabled && spritePosition === "left" && spriteCharacterIds.length > 0 && (
-        <SpriteSidebar
-          characterIds={spriteCharacterIds}
-          messages={msgPayload}
-          characterMap={characterMap}
-          isRoleplay={isRoleplay}
-        />
+        <Suspense fallback={null}>
+          <SpriteSidebar
+            characterIds={spriteCharacterIds}
+            messages={msgPayload}
+            characterMap={characterMap}
+            isRoleplay={isRoleplay}
+          />
+        </Suspense>
       )}
 
       <div className="rpg-chat-area mari-chat-area relative flex flex-1 flex-col overflow-hidden">
@@ -743,16 +790,18 @@ export function ChatRoleplaySurface({
         <div className="rpg-vignette pointer-events-none absolute inset-0" />
         {weatherEffects && <WeatherEffectsConnected />}
         {expressionAgentEnabled && spriteCharacterIds.length > 0 && (
-          <SpriteOverlay
-            characterIds={spriteCharacterIds}
-            messages={msgPayload}
-            side={spritePosition}
-            spriteExpressions={spriteExpressions}
-            spritePlacements={spritePlacements}
-            editing={spriteArrangeMode}
-            onExpressionChange={onExpressionChange}
-            onPlacementChange={onSpritePlacementChange}
-          />
+          <Suspense fallback={null}>
+            <SpriteOverlay
+              characterIds={spriteCharacterIds}
+              messages={msgPayload}
+              side={spritePosition}
+              spriteExpressions={spriteExpressions}
+              spritePlacements={spritePlacements}
+              editing={spriteArrangeMode}
+              onExpressionChange={onExpressionChange}
+              onPlacementChange={onSpritePlacementChange}
+            />
+          </Suspense>
         )}
 
         <div className="flex flex-1 overflow-hidden">
@@ -766,14 +815,16 @@ export function ChatRoleplaySurface({
               >
                 {chat && chatMeta.enableAgents && (
                   <div className="pointer-events-auto flex-1 overflow-x-auto">
-                    <RoleplayHUD
-                      chatId={chat.id}
-                      characterCount={chatCharIds.length}
-                      layout="top"
-                      onRetriggerTrackers={onRerunTrackers}
-                      enabledAgentTypes={enabledAgentTypes}
-                      manualTrackers={!!chatMeta.manualTrackers}
-                    />
+                    <Suspense fallback={null}>
+                      <RoleplayHUD
+                        chatId={chat.id}
+                        characterCount={chatCharIds.length}
+                        layout="top"
+                        onRetriggerTrackers={onRerunTrackers}
+                        enabledAgentTypes={enabledAgentTypes}
+                        manualTrackers={!!chatMeta.manualTrackers}
+                      />
+                    </Suspense>
                   </div>
                 )}
                 <div className="pointer-events-auto ml-auto flex shrink-0 items-center gap-1.5">
@@ -820,15 +871,17 @@ export function ChatRoleplaySurface({
               <div className={cn("pointer-events-auto relative z-40 w-full flex-col", centerCompact ? "flex" : "flex md:hidden")}>
                 {chat && chatMeta.enableAgents && (
                   <div className="flex w-full items-center justify-between px-2 pb-1 pt-2">
-                    <RoleplayHUD
-                      chatId={chat.id}
-                      characterCount={chatCharIds.length}
-                      layout="top"
-                      onRetriggerTrackers={onRerunTrackers}
-                      enabledAgentTypes={enabledAgentTypes}
-                      manualTrackers={!!chatMeta.manualTrackers}
-                      mobileCompact
-                    />
+                    <Suspense fallback={null}>
+                      <RoleplayHUD
+                        chatId={chat.id}
+                        characterCount={chatCharIds.length}
+                        layout="top"
+                        onRetriggerTrackers={onRerunTrackers}
+                        enabledAgentTypes={enabledAgentTypes}
+                        manualTrackers={!!chatMeta.manualTrackers}
+                        mobileCompact
+                      />
+                    </Suspense>
                     <ToolbarMenu>
                       <SummaryButton
                         chatId={chat?.id ?? null}
@@ -896,7 +949,11 @@ export function ChatRoleplaySurface({
               </div>
             </>
 
-            {encounterActive && <EncounterModal />}
+            {encounterActive && (
+              <Suspense fallback={null}>
+                <EncounterModal />
+              </Suspense>
+            )}
 
             <div className="relative z-10 flex-1 overflow-hidden">
               <div
@@ -1052,16 +1109,22 @@ export function ChatRoleplaySurface({
           </div>
         </div>
 
-        <EchoChamberPanel />
+        {echoChamberOpen && (
+          <Suspense fallback={null}>
+            <EchoChamberPanel />
+          </Suspense>
+        )}
       </div>
 
       {expressionAgentEnabled && spritePosition === "right" && spriteCharacterIds.length > 0 && (
-        <SpriteSidebar
-          characterIds={spriteCharacterIds}
-          messages={msgPayload}
-          characterMap={characterMap}
-          isRoleplay={isRoleplay}
-        />
+        <Suspense fallback={null}>
+          <SpriteSidebar
+            characterIds={spriteCharacterIds}
+            messages={msgPayload}
+            characterMap={characterMap}
+            isRoleplay={isRoleplay}
+          />
+        </Suspense>
       )}
 
       <ChatCommonOverlays
