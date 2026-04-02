@@ -892,10 +892,20 @@ export function useGenerate() {
       } finally {
         // Cancel any pending animation frame to prevent leaks
         cancelAnimationFrame(rafId);
-        // Invalidate messages to pick up saved messages / new swipes from backend
-        await qc.invalidateQueries({
-          queryKey: chatKeys.messages(params.chatId),
-        });
+        // Invalidate messages to pick up saved messages / new swipes from backend.
+        // Retry once on failure (transient network hiccup, service-worker race, etc.)
+        // so a temporary glitch doesn't leave the chat showing stale data.
+        const msgKey = chatKeys.messages(params.chatId);
+        try {
+          await qc.invalidateQueries({ queryKey: msgKey });
+        } catch {
+          try {
+            await new Promise((r) => setTimeout(r, 250));
+            await qc.invalidateQueries({ queryKey: msgKey });
+          } catch {
+            /* best-effort — the user can pull-to-refresh */
+          }
+        }
         // Re-sort sidebar so this chat floats to the top
         qc.invalidateQueries({ queryKey: chatKeys.list() });
         // If the user navigated away from this chat during generation,

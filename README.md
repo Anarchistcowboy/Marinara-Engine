@@ -58,7 +58,7 @@
 
 ## Latest Release
 
-Current stable release: **[v1.4.7](https://github.com/SpicyMarinara/Marinara-Engine/releases/tag/v1.4.7)**.
+Current stable release: **[v1.4.8](https://github.com/SpicyMarinara/Marinara-Engine/releases/tag/v1.4.8)**.
 
 Detailed release notes now live in [CHANGELOG.md](CHANGELOG.md). Tagged releases use the `vX.Y.Z` format, and GitHub Releases remain the publication mechanism for installers, release notes, and update metadata.
 
@@ -75,7 +75,7 @@ Detailed release notes now live in [CHANGELOG.md](CHANGELOG.md). Tagged releases
 
 ### Windows Easiest Method
 
-Download **[Marinara-Engine-Installer-1.4.7.exe](https://github.com/SpicyMarinara/Marinara-Engine/releases/download/v1.4.7/Marinara-Engine-Installer-1.4.7.exe)** from the [Releases](https://github.com/SpicyMarinara/Marinara-Engine/releases) page and run it. The installer checks for Node.js and Git, clones the repo, installs dependencies, builds the app, and creates a desktop shortcut.
+Download **[Marinara-Engine-Installer-1.4.8.exe](https://github.com/SpicyMarinara/Marinara-Engine/releases/download/v1.4.8/Marinara-Engine-Installer-1.4.8.exe)** from the [Releases](https://github.com/SpicyMarinara/Marinara-Engine/releases) page and run it. The installer checks for Node.js and Git, clones the repo, installs dependencies, builds the app, and creates a desktop shortcut.
 
 ### Run from Source (All Platforms)
 

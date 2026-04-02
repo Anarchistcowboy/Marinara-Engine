@@ -11,7 +11,7 @@
 
 ; ── App metadata ──
 !define APP_NAME "Marinara Engine"
-!define APP_VERSION "1.4.7"
+!define APP_VERSION "1.4.8"
 !define APP_PUBLISHER "SpicyMarinara"
 !define APP_URL "https://github.com/SpicyMarinara/Marinara-Engine"
 !define REPO_URL "https://github.com/SpicyMarinara/Marinara-Engine.git"

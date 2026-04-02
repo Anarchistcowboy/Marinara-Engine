@@ -4,6 +4,8 @@ This file is the release-notes source of truth for Marinara Engine. Reuse these 
 
 ## [Unreleased]
 
+## [1.4.8]
+
 ### Added
 
 - Added `pnpm check`, version-sync helpers, and PR CI checks for version drift.
@@ -17,9 +19,15 @@ This file is the release-notes source of truth for Marinara Engine. Reuse these 
 
 ### Fixed
 
+- **Vanishing messages after generation** — Messages could disappear at the end of streaming in Roleplay mode due to the browser and service worker serving stale cached API responses. Added triple-layer cache busting (server `Cache-Control: no-store`, client `cache: "no-store"`, and Workbox `NetworkOnly` for API routes) and hardened the streaming-to-message transition with retry-on-failure and double-rAF React commit timing.
+- **Agent deletion foreign key constraint** — Deleting an agent no longer fails when chat history references its characters.
+- **Mode switch caching** — Switching between Conversation and Roleplay mode now correctly invalidates the cached chat data.
+- **Update system** — The in-app update check and notification flow now works reliably.
 - `CORS_ORIGINS=*` now behaves as explicit allow-all without credentials, while explicit origin lists retain credentialed CORS support.
 - GIF search no longer falls back to a shared embedded API key when `GIPHY_API_KEY` is unset.
 - Sidebar tab text metrics were made explicit so descenders like the `y` in `Roleplay` no longer clip.
+- Default log level changed to `warn` to reduce console noise.
+- Cross-post redirect handling corrected.
 
 ## [1.4.7]
 
