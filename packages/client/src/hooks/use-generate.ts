@@ -61,6 +61,32 @@ function upsertPersistedMessages(qc: QueryClient, chatId: string, incoming: Mess
   });
 }
 
+async function refreshMessagesAuthoritatively(
+  qc: QueryClient,
+  chatId: string,
+  persistedMessages: Iterable<Message> = [],
+) {
+  const msgKey = chatKeys.messages(chatId);
+  const persisted = [...persistedMessages];
+
+  await qc.cancelQueries({ queryKey: msgKey, exact: true });
+
+  try {
+    await qc.refetchQueries({ queryKey: msgKey, exact: true, type: "all" });
+  } catch {
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      await qc.refetchQueries({ queryKey: msgKey, exact: true, type: "all" });
+    } catch {
+      /* best-effort — keep any persisted messages we already have */
+    }
+  }
+
+  if (persisted.length > 0) {
+    upsertPersistedMessages(qc, chatId, persisted);
+  }
+}
+
 /**
  * Hook that handles streaming generation.
  * Returns a function to trigger generation which streams tokens
@@ -140,6 +166,11 @@ export function useGenerate() {
         setRegenerateMessageId(params.regenerateMessageId ?? null);
       }
       console.warn("[Generate] Starting generation for chat:", params.chatId);
+
+      // A stale in-flight message refetch can overwrite the saved assistant
+      // message after it is upserted into the cache. Cancel early so the
+      // post-save refresh owns the query lifecycle for this generation.
+      await qc.cancelQueries({ queryKey: chatKeys.messages(params.chatId), exact: true });
 
       // Optimistically show the user message in the chat immediately
       if (params.userMessage && !params.impersonate) {
@@ -620,7 +651,7 @@ export function useGenerate() {
                   });
                 }
                 // Pick up the just-saved message from the previous character
-                await qc.invalidateQueries({ queryKey: chatKeys.messages(params.chatId) });
+                await refreshMessagesAuthoritatively(qc, params.chatId, persistedMessages.values());
                 // Increment unread if user navigated away during group generation
                 const activeNow = useChatStore.getState().activeChatId;
                 if (activeNow !== params.chatId) {
@@ -733,6 +764,7 @@ export function useGenerate() {
 
             case "message_saved": {
               const savedMessage = event.data as Message;
+              await qc.cancelQueries({ queryKey: chatKeys.messages(params.chatId), exact: true });
               persistedMessages.set(savedMessage.id, savedMessage);
               upsertPersistedMessages(qc, params.chatId, [savedMessage]);
               break;
@@ -769,7 +801,7 @@ export function useGenerate() {
               };
               toast(`${selfieData.characterName} sent a selfie 📸`);
               // Invalidate current chat messages to show the attachment
-              qc.invalidateQueries({ queryKey: ["chats", "messages", params.chatId] });
+              await refreshMessagesAuthoritatively(qc, params.chatId, persistedMessages.values());
               break;
             }
 
@@ -789,7 +821,7 @@ export function useGenerate() {
               };
               toast(illData.reason ? `🎨 ${illData.reason}` : "🎨 Scene illustration generated");
               // Invalidate messages to show the new attachment
-              qc.invalidateQueries({ queryKey: ["chats", "messages", params.chatId] });
+              await refreshMessagesAuthoritatively(qc, params.chatId, persistedMessages.values());
               break;
             }
 
@@ -956,23 +988,7 @@ export function useGenerate() {
       } finally {
         // Cancel any pending animation frame to prevent leaks
         cancelAnimationFrame(rafId);
-        // Invalidate messages to pick up saved messages / new swipes from backend.
-        // Retry once on failure (transient network hiccup, service-worker race, etc.)
-        // so a temporary glitch doesn't leave the chat showing stale data.
-        const msgKey = chatKeys.messages(params.chatId);
-        try {
-          await qc.invalidateQueries({ queryKey: msgKey });
-        } catch {
-          try {
-            await new Promise((r) => setTimeout(r, 250));
-            await qc.invalidateQueries({ queryKey: msgKey });
-          } catch {
-            /* best-effort — the user can pull-to-refresh */
-          }
-        }
-        if (persistedMessages.size > 0) {
-          upsertPersistedMessages(qc, params.chatId, [...persistedMessages.values()]);
-        }
+        await refreshMessagesAuthoritatively(qc, params.chatId, persistedMessages.values());
         // Refresh game state from DB so the HUD shows the correct tracker data
         // for the active swipe. SSE game_state_patch events update the store
         // during generation, but React scheduling / streaming can cause them
