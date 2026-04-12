@@ -188,50 +188,69 @@ function renderWithSpeakerTags(
 }
 
 /**
- * Highlight quoted dialogue — text in "", "", «», or '' gets bold + colored.
- * Returns an array of ReactNodes (strings + <strong> elements).
+ * Bold quoted dialogue within a plain text string (no markdown awareness).
+ * Used as a second pass after inline markdown has already been applied.
  */
-function highlightDialogue(text: string, dialogueColor?: string): ReactNode[] {
-  // Match text in various quotation marks (curly doubles already normalised to straight)
-  const regex = /(?:"([^"]+)"|«([^»]+)»|‘([^’]+)’)/g;
+function boldDialogueInString(text: string, dialogueColor: string | undefined, keyPrefix: string): ReactNode[] {
+  const regex = /(?:"([^"]+)"|«([^»]+)»|'([^']+)')/g;
   const nodes: ReactNode[] = [];
   let lastIndex = 0;
   let match: RegExpExecArray | null;
   let key = 0;
 
   while ((match = regex.exec(text)) !== null) {
-    // Add text before the match — apply inline markdown
     if (match.index > lastIndex) {
-      nodes.push(...applyInlineMarkdown(text.slice(lastIndex, match.index), `d${key}`));
+      nodes.push(text.slice(lastIndex, match.index));
     }
-    // The full match including quotes
     const fullMatch = match[0];
-    // Determine which capture group matched
     const innerText = match[1] ?? match[2] ?? match[3] ?? "";
-    // Get the opening and closing quotes from the full match
     const openQuote = fullMatch[0];
     const closeQuote = fullMatch[fullMatch.length - 1];
 
     nodes.push(
       <strong
-        key={key++}
+        key={`${keyPrefix}${key++}`}
         style={dialogueColor ? { color: dialogueColor } : undefined}
         className={!dialogueColor ? "text-white" : undefined}
       >
         {openQuote}
-        {applyInlineMarkdown(innerText, `dq${key}`)}
+        {innerText}
         {closeQuote}
       </strong>,
     );
     lastIndex = match.index + fullMatch.length;
   }
 
-  // Add remaining text — apply inline markdown
   if (lastIndex < text.length) {
-    nodes.push(...applyInlineMarkdown(text.slice(lastIndex), `d${key}`));
+    nodes.push(text.slice(lastIndex));
+  }
+  return nodes.length > 0 ? nodes : [text];
+}
+
+/**
+ * Highlight quoted dialogue — text in "", "", «», or '' gets bold + colored.
+ *
+ * Applies inline markdown FIRST, then walks the resulting ReactNode array
+ * and only applies dialogue bolding to plain-string leaf nodes. This
+ * prevents dialogue matching from breaking code spans, strikethrough,
+ * highlights, and other markdown constructs that may contain quotes.
+ */
+function highlightDialogue(text: string, dialogueColor?: string): ReactNode[] {
+  // Step 1: apply inline markdown so code spans, bold, italic, etc. become React elements
+  const mdNodes = applyInlineMarkdown(text, "m");
+
+  // Step 2: walk the nodes — only bold dialogue inside plain-string segments
+  let key = 0;
+  const result: ReactNode[] = [];
+  for (const node of mdNodes) {
+    if (typeof node === "string") {
+      result.push(...boldDialogueInString(node, dialogueColor, `d${key++}`));
+    } else {
+      result.push(node);
+    }
   }
 
-  return nodes.length > 0 ? nodes : applyInlineMarkdown(text, "m");
+  return result;
 }
 
 /** Check whether text contains meaningful HTML tags. */
