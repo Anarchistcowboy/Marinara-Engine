@@ -1027,6 +1027,9 @@ export function ChatArea() {
             onCloseDeleteDialog={() => setDeleteDialogMessageId(null)}
             onBulkDelete={handleBulkDelete}
             onCancelMultiSelect={handleCancelMultiSelect}
+            onUnselectAllMessages={handleUnselectAllMessages}
+            onSelectAllAboveSelection={handleSelectAllAboveSelection}
+            onSelectAllBelowSelection={handleSelectAllBelowSelection}
             lastAssistantMessageId={lastAssistantMessageId}
           />
         </Suspense>
