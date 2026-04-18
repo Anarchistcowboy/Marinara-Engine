@@ -830,6 +830,8 @@ export function GameNarration({
 
   const gameTextSpeed = useUIStore((s) => s.gameTextSpeed);
   const gameAutoPlayDelay = useUIStore((s) => s.gameAutoPlayDelay);
+  const chatFontColor = useUIStore((s) => s.chatFontColor);
+  const narrationStyle = chatFontColor ? { color: chatFontColor } : undefined;
   const [autoPlay, setAutoPlay] = useState(false);
 
   useEffect(() => {
@@ -1253,6 +1255,7 @@ export function GameNarration({
                         ? ""
                         : "after:ml-0.5 after:inline-block after:h-4 after:w-[1px] after:animate-pulse after:bg-white/60 after:align-middle",
                     )}
+                    style={narrationStyle}
                     dangerouslySetInnerHTML={{
                       __html: animateTextHtml(
                         formatNarration(slicePreservingEffects(active.content, visibleChars), false),
@@ -1631,6 +1634,7 @@ export function GameNarration({
                           ) : (
                             <div
                               className="text-xs leading-relaxed text-white/80"
+                              style={narrationStyle}
                               dangerouslySetInnerHTML={{ __html: animateTextHtml(formatNarration(seg.content, false)) }}
                             />
                           )}
