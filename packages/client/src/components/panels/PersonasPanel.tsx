@@ -814,22 +814,12 @@ export function PersonasPanel() {
                         e.stopPropagation();
                         activatePersona.mutate(persona.id);
                       }}
-                      className="rounded-lg p-1.5 text-emerald-400 transition-colors hover:bg-emerald-400/10"
+                      className="rounded-lg p-1.5 text-emerald-400 transition-all active:scale-90 hover:bg-emerald-400/10"
                       title="Set as active"
                     >
-                      <Star size="0.8125rem" />
+                      <Star size="0.75rem" />
                     </button>
                   )}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      openPersonaDetail(persona.id);
-                    }}
-                    className="rounded-lg p-1.5 text-[var(--muted-foreground)] transition-colors hover:bg-[var(--accent)] hover:text-[var(--foreground)]"
-                    title="Edit"
-                  >
-                    <Pencil size="0.8125rem" />
-                  </button>
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -839,10 +829,10 @@ export function PersonasPanel() {
                         },
                       });
                     }}
-                    className="rounded-lg p-1.5 text-[var(--muted-foreground)] transition-colors hover:bg-sky-400/10 hover:text-sky-400"
+                    className="rounded-lg p-1.5 text-[var(--muted-foreground)] transition-all active:scale-90 hover:bg-sky-400/10 hover:text-sky-400"
                     title="Duplicate"
                   >
-                    <Copy size="0.8125rem" />
+                    <Copy size="0.75rem" />
                   </button>
                   <button
                     onClick={(e) => {
@@ -850,10 +840,10 @@ export function PersonasPanel() {
                       if (!confirm(`Delete "${persona.name}"? This cannot be undone.`)) return;
                       deletePersona.mutate(persona.id);
                     }}
-                    className="rounded-lg p-1.5 text-[var(--muted-foreground)] transition-colors hover:bg-[var(--destructive)]/10 hover:text-[var(--destructive)]"
+                    className="rounded-lg p-1.5 transition-all hover:bg-[var(--destructive)]/15 active:scale-90"
                     title="Delete"
                   >
-                    <Trash2 size="0.8125rem" />
+                    <Trash2 size="0.75rem" className="text-[var(--destructive)]" />
                   </button>
                 </div>
               )}

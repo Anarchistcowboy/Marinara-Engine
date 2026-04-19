@@ -1029,10 +1029,10 @@ export function CharactersPanel() {
                         toggleCharacter(char.id);
                       }}
                       className={cn(
-                        "rounded-lg p-1.5 transition-all",
+                        "rounded-lg p-1.5 transition-all active:scale-90",
                         isSelected
                           ? "text-[var(--destructive)] hover:bg-[var(--destructive)]/15"
-                          : "hover:bg-[var(--accent)] text-[var(--primary)]",
+                          : "text-[var(--muted-foreground)] hover:bg-[var(--accent)] hover:text-[var(--foreground)]",
                       )}
                       title={isSelected ? "Remove from chat" : "Add to chat"}
                     >
@@ -1048,10 +1048,10 @@ export function CharactersPanel() {
                         },
                       });
                     }}
-                    className="rounded-lg p-1.5 transition-all hover:bg-sky-400/10 active:scale-90"
-                    title="Duplicate character"
+                    className="rounded-lg p-1.5 transition-all hover:bg-[var(--accent)] active:scale-90"
+                    title="Duplicate"
                   >
-                    <Copy size="0.75rem" className="text-sky-400" />
+                    <Copy size="0.75rem" className="text-[var(--muted-foreground)]" />
                   </button>
                   <button
                     onClick={(e) => {
@@ -1059,7 +1059,7 @@ export function CharactersPanel() {
                       if (!confirm(`Delete "${char.parsed?.name ?? "this character"}"? This cannot be undone.`)) return;
                       deleteCharacter.mutate(char.id);
                     }}
-                    className="rounded-lg p-1.5 transition-all hover:bg-[var(--destructive)]/15"
+                    className="rounded-lg p-1.5 transition-all hover:bg-[var(--destructive)]/15 active:scale-90"
                     title="Delete character"
                   >
                     <Trash2 size="0.75rem" className="text-[var(--destructive)]" />

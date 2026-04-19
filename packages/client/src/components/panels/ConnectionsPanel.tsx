@@ -316,7 +316,7 @@ export function ConnectionsPanel() {
                   )}
                   title={inRandomPool ? "In random pool (click to remove)" : "Add to random pool"}
                 >
-                  <Shuffle size="0.8125rem" />
+                  <Shuffle size="0.75rem" />
                 </button>
                 <button
                   onClick={(e) => {
@@ -330,16 +330,18 @@ export function ConnectionsPanel() {
                   className="rounded-lg p-1.5 text-[var(--muted-foreground)] transition-all hover:bg-sky-400/10 hover:text-sky-400 active:scale-90"
                   title="Duplicate connection"
                 >
-                  <Copy size="0.8125rem" />
+                  <Copy size="0.75rem" />
                 </button>
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
+                    if (!confirm(`Delete "${conn.name}"? This cannot be undone.`)) return;
                     deleteConnection.mutate(conn.id);
                   }}
                   className="rounded-lg p-1.5 transition-all hover:bg-[var(--destructive)]/15 active:scale-90"
+                  title="Delete"
                 >
-                  <Trash2 size="0.8125rem" className="text-[var(--destructive)]" />
+                  <Trash2 size="0.75rem" className="text-[var(--destructive)]" />
                 </button>
               </div>
             </div>
