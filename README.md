@@ -140,7 +140,7 @@ git --version  # should show git version 2.x+
 
 ```bat
 git clone https://github.com/Pasta-Devs/Marinara-Engine.git
-cd marinara-engine
+cd Marinara-Engine
 start.bat
 ```
 
@@ -148,7 +148,7 @@ start.bat
 
 ```bash
 git clone https://github.com/Pasta-Devs/Marinara-Engine.git
-cd marinara-engine
+cd Marinara-Engine
 chmod +x start.sh
 ./start.sh
 ```
